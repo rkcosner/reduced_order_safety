@@ -1,0 +1,9 @@
+<launch>
+
+  <arg name="server" default="localhost"/>
+
+  <node pkg="red_ord_cassie" type="safe_velocity_node.py" name="safe_velocity_node" output="screen"/>
+  <param name="vx" type="double" value="0.0"/>
+  <param name="vy" type="double" value="0.0"/>
+
+</launch>
