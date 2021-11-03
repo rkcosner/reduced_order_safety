@@ -28,6 +28,10 @@ scale = 0.1
 Kp = 1*scale
 alpha = 0.2
 
+## ANIL: Tuneable ISSf params 
+# epsilon(h) = epsilon_0 * pow(e, lambda_0 * h)
+epsilon_0 = 20e4
+lambda_0 = 5*0
 
 # Dictionary of parameters for easy access in node object
 par = {
@@ -37,6 +41,8 @@ par = {
     'Kp'    : Kp, 
     'alpha' : alpha, 
     'dim'   : dim,
+    'epsilon_0' : epsilon_0,
+    'lambda_0'  : lambda_0
 }
 
 
@@ -76,9 +82,9 @@ class safe_velocity_node():
         self.u_des_traj = []
         self.h_traj = []
 
-        ## Tuneable ISSf params 
-        self.epsilon_0 = 0 
-        self.lamba_0 = 0 
+        ## TISSf Init Data Recording
+        #   epsilon_traj:   vector of variable T-ISSf modifications through time (hDot \geq -alpha(h) + ||Lgh||^2/epsilon(h) )
+        self.epsilon_traj = []
 
 
     def stateCallbackHardware(self, data): 
@@ -121,7 +127,8 @@ class safe_velocity_node():
 
         if self.flag_state_received: 
             return 
-        u_np = self.K_CBF()
+        ## ANIL: Added epsilon signal as an output
+        u_np , epslon = self.K_CBF()
 
         self.cmdVel.linear.x = u_np[0,0]
         self.cmdVel.linear.y = u_np[1,0]
@@ -136,6 +143,7 @@ class safe_velocity_node():
         # Data logging
         self.u_des_traj.append(u_np[0:2])
         self.h_traj.append(self.CBF()[0])
+        self.epsilon_traj.append(epslon)
 
     def K_CBF(self):
         ## Get safe, filtered velocity command 
@@ -143,9 +151,12 @@ class safe_velocity_node():
         alpha = par['alpha']
         udes =self.K_des()
         h, Lfh, Lgh, LghLgh = self.CBF() 
-        phi = Lfh + Lgh@udes + alpha*h
+        # ANIL: Modified phi function with ISSf
+        epslon = par['epsilon_0']*pow(2.71828,par['lambda_0']*h)
+        phi = Lfh + Lgh@udes + alpha*h - 1/epslon
         u = udes + max(0, -phi)*Lgh.T/LghLgh
-        return u
+        # ANIL: send epsilon signal as an output
+        return u, epslon
 
     def CBF(self): 
         ## Returns CBF values: h, Lfh, Lghm LghLgh 
@@ -210,6 +221,8 @@ if __name__ =="__main__":
     u_traj = np.squeeze(np.array(node.u_traj))
     u_des_traj = np.squeeze(np.array(node.u_des_traj))
     h_traj = np.array(node.h_traj)
+    # ANIL: Added epsilon array
+    epsilon_traj = np.array(node.epsilon_traj)
 
     today = datetime.now()
     print(os.getcwd())
@@ -219,6 +232,7 @@ if __name__ =="__main__":
     np.save(filename_string+"_u_traj.npy", node.u_traj)
     np.save(filename_string+"_u_des_traj.npy", node.u_des_traj)
     np.save(filename_string+"_h_traj.npy", node.h_traj)
+    np.save(filename_string+"_eps_traj.npy", node.epsilon_traj)
 
 
     # Obstacle Details for plotting
@@ -246,5 +260,10 @@ if __name__ =="__main__":
     plt.plot(h_traj)
     plt.hlines(0, xmin=0, xmax=len(h_traj), linestyles='dashed')
     plt.legend(['CBF'])
+
+    ## ANIL: Added epsilon plot
+    plt.figure()
+    plt.plot(epsilon_traj)
+    plt.legend(['epsilon'])
 
     plt.show()
