@@ -1,5 +1,7 @@
 import rospy 
 import numpy as np 
+import scipy as sp 
+import ecos 
 from geometry_msgs.msg import Twist
 from gazebo_msgs.msg import LinkStates
 import std_msgs.msg
@@ -85,7 +87,18 @@ class safe_velocity_node():
         ## TISSf Init Data Recording
         #   epsilon_traj:   vector of variable T-ISSf modifications through time (hDot \geq -alpha(h) + ||Lgh||^2/epsilon(h) )
         self.epsilon_traj = []
+        
 
+        ## SOCP Params
+        self.L_lgh = 0 
+        self.L_lfh = 0
+        self.L_ah = 0 
+        self.epsilon = 0 
+        self.SOCP_dims = {
+            'l':0,      # linear cone size
+            'q':[4,3],  # second order cone size
+            'e':0       # exponential cone sizes
+        }
 
     def stateCallbackHardware(self, data): 
         ## Hardware State Reader
@@ -129,6 +142,8 @@ class safe_velocity_node():
             return 
         ## ANIL: Added epsilon signal as an output
         u_np , epslon = self.K_CBF()
+        u_socp = self.K_CBF_SOCP()
+        print(u_socp - u_np)
 
         self.cmdVel.linear.x = u_np[0,0]
         self.cmdVel.linear.y = u_np[1,0]
@@ -195,8 +210,38 @@ class safe_velocity_node():
         self.u_traj.append(udes)
 
         return udes
-        
 
+
+    def K_CBF_SOCP(self): 
+        h, Lfh, Lgh, LghLgh = self.CBF()
+        G = sp.sparse.csc_matrix(
+            [[-1/np.sqrt(2), 0, 0], 
+            [-1/np.sqrt(2), 0, 0 ], 
+            [0, -1, 0], 
+            [0, 0, -1], 
+            [0, -Lgh[0,0],  -Lgh[0,1]],
+            [0, -self.epsilon*self.L_lgh, 0], 
+            [0, 0, -self.epsilon*self.L_lgh]]
+        )
+        b  = np.array(
+            [1/np.sqrt(2), 
+            -1/np.sqrt(2), 
+            0, 
+            0, 
+            Lfh + par['alpha']*h - (self.L_lfh + self.L_ah)*self.epsilon, 
+            0, 
+            0]
+        )
+        u_des = self.K_des()
+        cost = np.array([1.0, -u_des[0].item(),  -u_des[1].item()])
+        ecos_solver_output = ecos.solve(cost, G, b, self.SOCP_dims, verbose=False)
+
+        if ecos_solver_output['info']['exitFlag'] ==0 or ecos_solver_output['info']['exitFlag'] ==10: # ECOS Solver Successful
+            u_des = np.expand_dims(ecos_solver_output['x'][1:3],1)
+            return u_des
+        else: # ECOS Solver Failed 
+            rospy.logwarn('SOCP failed') # Filter falls back to previous self.inputAct_
+            return np.array([[0],[0]])
 
 
 if __name__ =="__main__": 
