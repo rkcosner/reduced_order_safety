@@ -93,10 +93,10 @@ class safe_velocity_node():
         self.L_lgh = 0 
         self.L_lfh = 0
         self.L_ah = 0 
-        self.epsilon = 0 
+        self.gamma = 0 
         self.SOCP_dims = {
             'l':0,      # linear cone size
-            'q':[4,3],  # second order cone size
+            'q':[4,3,3],  # second order cone size
             'e':0       # exponential cone sizes
         }
 
@@ -141,9 +141,10 @@ class safe_velocity_node():
         if self.flag_state_received: 
             return 
         ## ANIL: Added epsilon signal as an output
-        u_np , epslon = self.K_CBF()
+        # u_np , epslon = self.K_CBF()
+        epslon = 0 
         u_socp = self.K_CBF_SOCP()
-        print(u_socp - u_np)
+        u_np = u_socp
 
         self.cmdVel.linear.x = u_np[0,0]
         self.cmdVel.linear.y = u_np[1,0]
@@ -200,6 +201,63 @@ class safe_velocity_node():
 
         return h, Lfh, Lgh, LghLgh 
 
+
+    def CBF1(self): 
+        ## Returns CBF values: h, Lfh, Lghm LghLgh 
+        z = self.state
+        dim = par['dim']
+        xO = par['xO']
+        DO = par['DO']
+        x = z[0:dim,:]
+        psi = z[dim,:][0]
+
+        # Calculate h values
+        hk = np.zeros((len(DO[0]),1))
+
+        kob = 0 
+        xob = np.array([xO[:,kob]]).T
+        Dob = DO[0,kob]
+        h = np.linalg.norm(x-xob) - Dob
+
+
+        # Calculate Lfh, Lgh, LghLgh' for only the closest barrier (See: Egerstedt "Nonsmooth Composable CBFs")
+        idx = kob
+        xob = np.array([xO[:,idx]]).T
+        gradh = ((x - xob)/np.linalg.norm(x - xob)).T 
+        Lfh = 0 
+        Lgh = gradh
+        LghLgh = 1
+
+        return h, Lfh, Lgh, LghLgh 
+
+    def CBF2(self): 
+        ## Returns CBF values: h, Lfh, Lghm LghLgh 
+        z = self.state
+        dim = par['dim']
+        xO = par['xO']
+        DO = par['DO']
+        x = z[0:dim,:]
+        psi = z[dim,:][0]
+
+        # Calculate h values
+        hk = np.zeros((len(DO[0]),1))
+
+        kob = 1 
+        xob = np.array([xO[:,kob]]).T
+        Dob = DO[0,kob]
+        h = np.linalg.norm(x-xob) - Dob
+
+
+        # Calculate Lfh, Lgh, LghLgh' for only the closest barrier (See: Egerstedt "Nonsmooth Composable CBFs")
+        idx = kob
+        xob = np.array([xO[:,idx]]).T
+        gradh = ((x - xob)/np.linalg.norm(x - xob)).T 
+        Lfh = 0 
+        Lgh = gradh
+        LghLgh = 1
+
+        return h, Lfh, Lgh, LghLgh 
+
     def K_des(self):
         ## Records and returns unfiltered velocity values        
         z = self.state 
@@ -213,22 +271,30 @@ class safe_velocity_node():
 
 
     def K_CBF_SOCP(self): 
-        h, Lfh, Lgh, LghLgh = self.CBF()
+        h1, Lfh1, Lgh1, LghLgh1 = self.CBF1()
+        h2, Lfh2, Lgh2, LghLgh2 = self.CBF2()
+
         G = sp.sparse.csc_matrix(
             [[-1/np.sqrt(2), 0, 0], 
             [-1/np.sqrt(2), 0, 0 ], 
             [0, -1, 0], 
             [0, 0, -1], 
-            [0, -Lgh[0,0],  -Lgh[0,1]],
-            [0, -self.epsilon*self.L_lgh, 0], 
-            [0, 0, -self.epsilon*self.L_lgh]]
+            [0, -Lgh1[0,0],  -Lgh1[0,1]],
+            [0, -self.gamma*self.L_lgh, 0], 
+            [0, 0, -self.gamma*self.L_lgh],
+            [0, -Lgh2[0,0],  -Lgh2[0,1]],
+            [0, -self.gamma*self.L_lgh, 0], 
+            [0, 0, -self.gamma*self.L_lgh]]
         )
         b  = np.array(
             [1/np.sqrt(2), 
             -1/np.sqrt(2), 
             0, 
             0, 
-            Lfh + par['alpha']*h - (self.L_lfh + self.L_ah)*self.epsilon, 
+            Lfh1 + par['alpha']*h1 - (self.L_lfh + self.L_ah)*self.gamma, 
+            0, 
+            0,
+            Lfh2 + par['alpha']*h2 - (self.L_lfh + self.L_ah)*self.gamma, 
             0, 
             0]
         )
