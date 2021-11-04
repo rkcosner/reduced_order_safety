@@ -90,10 +90,10 @@ class safe_velocity_node():
         
 
         ## SOCP Params
-        self.L_lgh = 0 
+        self.L_lgh = 1 
         self.L_lfh = 0
-        self.L_ah = 0 
-        self.gamma = 0 
+        self.L_ah = 1 
+        self.gamma = 0.01 
         self.SOCP_dims = {
             'l':0,      # linear cone size
             'q':[4,3,3],  # second order cone size
