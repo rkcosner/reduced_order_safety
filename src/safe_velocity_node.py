@@ -28,7 +28,7 @@ DO = (0.5+robot_radius)*np.ones((1,2))
 #   alpha           :   alpha parameter for the reduced order safety
 scale = 0.1
 Kp = 1*scale
-alpha = 0.2
+alpha = 1
 
 ## ANIL: Tuneable ISSf params 
 # epsilon(h) = epsilon_0 * pow(e, lambda_0 * h)
@@ -90,10 +90,12 @@ class safe_velocity_node():
         
 
         ## SOCP Params
+        self.sigma = 0.0001 
+        self.L_lgh2 = 1 
         self.L_lgh = 1 
         self.L_lfh = 0
         self.L_ah = 1 
-        self.gamma = 0.01 
+        self.gamma = 0.0001 
         self.SOCP_dims = {
             'l':0,      # linear cone size
             'q':[4,3,3],  # second order cone size
@@ -106,6 +108,7 @@ class safe_velocity_node():
         # - Sets falg_state_received handshake 
         # - Sets self.state data 
         # - Records state trajectory data (x_traj)
+
         if self.flag_state_received == False: 
             self.flag_state_received = True
 
@@ -120,7 +123,7 @@ class safe_velocity_node():
         # - Sets falg_state_received handshake 
         # - Sets self.state data 
         # - Records state trajectory data (x_traj)
-        if self.flag_state_received: 
+        if self.flag_state_received == False: 
             self.flag_state_received = True
 
         self.state[0,0] = data.linear.x
@@ -138,7 +141,9 @@ class safe_velocity_node():
         # - get filtered velocity command
         # - publish and record velocity command
 
-        if self.flag_state_received: 
+        print(self.flag_state_received)
+
+        if self.flag_state_received == False: 
             return 
         ## ANIL: Added epsilon signal as an output
         # u_np , epslon = self.K_CBF()
@@ -152,6 +157,7 @@ class safe_velocity_node():
         # Publish for simple sim
         self.pub.publish(self.cmdVel)
 
+        print("setting params")
         # Set Parameters for Cassie (cassie listens to these vvv rosparams instead of a velocity topic)
         rospy.set_param('cassie/locomotion_control/HLIP/HLIP_vxd', float(u_np[0,0]))
         rospy.set_param('cassie/locomotion_control/HLIP/HLIP_vyd', float(u_np[1,0]))
@@ -291,10 +297,10 @@ class safe_velocity_node():
             -1/np.sqrt(2), 
             0, 
             0, 
-            Lfh1 + par['alpha']*h1 - (self.L_lfh + self.L_ah)*self.gamma, 
+            Lfh1 + par['alpha']*h1 - (self.L_lfh + self.sigma*self.L_lgh2 + self.L_ah)*self.gamma - self.sigma*LghLgh1, 
             0, 
             0,
-            Lfh2 + par['alpha']*h2 - (self.L_lfh + self.L_ah)*self.gamma, 
+            Lfh2 + par['alpha']*h2 - (self.L_lfh + self.sigma*self.L_lgh2 + self.L_ah)*self.gamma - self.sigma*LghLgh2, 
             0, 
             0]
         )
