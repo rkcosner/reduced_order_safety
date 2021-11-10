@@ -4,6 +4,8 @@ import scipy as sp
 import ecos 
 from geometry_msgs.msg import Twist
 from gazebo_msgs.msg import LinkStates
+from visualization_msgs.msg import MarkerArray
+from visualization_msgs.msg import Marker
 import std_msgs.msg
 import matplotlib.pyplot as plt 
 from datetime import datetime
@@ -63,6 +65,7 @@ class safe_velocity_node():
         self.sub = rospy.Subscriber('gazebo/link_states', LinkStates, self.stateCallbackHardware)
         self.sub = rospy.Subscriber('simStates', Twist, self.stateCallbackSimultion)
         self.sub = rospy.Subscriber('kill_cmd', Twist, self.killCallback)
+        self.sub = rospy.Subscriber('barrier_IDs', MarkerArray, self.barrierIDsCallback)
 
         ## Set Object Parameters
         #   flag_state_received     :   flag change to true when first state message is received. Handshake before sending v_ref
@@ -101,6 +104,21 @@ class safe_velocity_node():
             'q':[4,3,3],  # second order cone size
             'e':0       # exponential cone sizes
         }
+
+    def barrierIDsCallback(self, data):
+        ## Receive and Update Barrier Positions
+        # - reads barrier_IDs message 
+        # - resets xO to the measured positions
+        # - sets Dob to be the appropriate length 
+        xO = []
+        for marker in data.markers: 
+            pose = [marker.pose.position.x, marker.pose.position.y]
+            xO.append(pose)
+        xO = np.array(xO).T
+        par["xO"] = xO
+        par["DO"] = (0.5+robot_radius)*np.ones((1, len(xO)))
+        print(par["xO"])
+        print(par["DO"])
 
     def stateCallbackHardware(self, data): 
         ## Hardware State Reader
