@@ -6,6 +6,7 @@ from geometry_msgs.msg import Twist
 from gazebo_msgs.msg import LinkStates
 from visualization_msgs.msg import MarkerArray
 from visualization_msgs.msg import Marker
+from nav_msgs.msg import Odometry
 import std_msgs.msg
 import matplotlib.pyplot as plt 
 from datetime import datetime
@@ -62,10 +63,11 @@ class safe_velocity_node():
         #   /gazebo/link_states     :   gets position values from Cassie simulator 
         #   /kill_cmd               :   ends simulation if a command of pose.x>0      
         self.pub = rospy.Publisher('cmd', Twist, queue_size=1)
-        self.sub = rospy.Subscriber('gazebo/link_states', LinkStates, self.stateCallbackHardware)
-        self.sub = rospy.Subscriber('simStates', Twist, self.stateCallbackSimultion)
-        self.sub = rospy.Subscriber('kill_cmd', Twist, self.killCallback)
-        self.sub = rospy.Subscriber('barrier_IDs', MarkerArray, self.barrierIDsCallback)
+        rospy.Subscriber('gazebo/link_states', LinkStates, self.stateCallbackHardware)
+        rospy.Subscriber('simStates', Twist, self.stateCallbackSimultion)
+        rospy.Subscriber('kill_cmd', Twist, self.killCallback)
+        rospy.Subscriber('barrier_IDs', MarkerArray, self.barrierIDsCallback)
+        rospy.Subscriber("t265/odom/sample",  Odometry, self.t265Callback)
 
         ## Set Object Parameters
         #   flag_state_received     :   flag change to true when first state message is received. Handshake before sending v_ref
@@ -110,9 +112,11 @@ class safe_velocity_node():
         # - reads barrier_IDs message 
         # - resets xO to the measured positions
         # - sets Dob to be the appropriate length 
+        # - records obstacle locations
+
         xO = []
         for marker in data.markers: 
-            pose = [marker.pose.position.x, marker.pose.position.y]
+            pose = [-marker.pose.position.y, marker.pose.position.x]
             xO.append(pose)
         xO = np.array(xO).T
         par["xO"] = xO
@@ -148,6 +152,21 @@ class safe_velocity_node():
         self.state[1,0] = data.linear.y
         self.state[2,0] = data.angular.z
         self.x_traj.append([data.linear.x, data.linear.y, data.angular.z])
+
+    def t265Callback(self, msg): 
+        ## Camera State Reader
+        # - reads camera odometry message
+        # - sets flat_state_received handshake
+        # - sets self.state data
+        # - records state trajectory data (x_traj)
+        if self.flag_state_received == False: 
+            self.flag_state_received = True
+
+        self.state[0,0] = msg.pose.pose.position.x
+        self.state[1,0] = msg.pose.pose.position.y
+        self.state[2,0] = msg.pose.pose.position.z
+        self.x_traj.append([msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z])
+
 
     def killCallback(self, data): 
         # Kills the controller whenever a kill_cmd is published
@@ -332,6 +351,7 @@ class safe_velocity_node():
         else: # ECOS Solver Failed 
             rospy.logwarn('SOCP failed') # Filter falls back to previous self.inputAct_
             return np.array([[0],[0]])
+
 
 
 if __name__ =="__main__": 
