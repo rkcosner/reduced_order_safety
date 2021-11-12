@@ -88,6 +88,7 @@ class safe_velocity_node():
         self.x_traj = []
         self.u_des_traj = []
         self.h_traj = []
+        self.obs_traj = []
 
         ## TISSf Init Data Recording
         #   epsilon_traj:   vector of variable T-ISSf modifications through time (hDot \geq -alpha(h) + ||Lgh||^2/epsilon(h) )
@@ -116,13 +117,12 @@ class safe_velocity_node():
 
         xO = []
         for marker in data.markers: 
-            pose = [-marker.pose.position.y, marker.pose.position.x]
+            pose = [marker.pose.position.x, marker.pose.position.y]
             xO.append(pose)
+            self.obs_traj.append(pose)
         xO = np.array(xO).T
         par["xO"] = xO
-        par["DO"] = (0.5+robot_radius)*np.ones((1, len(xO)))
-        print(par["xO"])
-        print(par["DO"])
+        par["DO"] = (0.5+robot_radius)*np.ones((1, xO.shape[1]))
 
     def stateCallbackHardware(self, data): 
         ## Hardware State Reader
@@ -378,6 +378,7 @@ if __name__ =="__main__":
     h_traj = np.array(node.h_traj)
     # ANIL: Added epsilon array
     epsilon_traj = np.array(node.epsilon_traj)
+    obs_traj = np.squeeze(np.array(node.obs_traj))
 
     today = datetime.now()
     print(os.getcwd())
@@ -388,7 +389,7 @@ if __name__ =="__main__":
     np.save(filename_string+"_u_des_traj.npy", node.u_des_traj)
     np.save(filename_string+"_h_traj.npy", node.h_traj)
     np.save(filename_string+"_eps_traj.npy", node.epsilon_traj)
-
+    np.save(filename_string+"_obs_traj.npy", node.obs_traj)
 
     # Obstacle Details for plotting
     theta = np.linspace(0,2*np.pi + 0.1)
@@ -399,6 +400,8 @@ if __name__ =="__main__":
     # Plot Everything
     plt.figure()
     plt.plot(x_traj[:,0],x_traj[:,1])
+    if len(obs_traj) > 0: 
+        plt.plot(obs_traj[:,0], obs_traj[:,1], '.')
     for xob in xO.T: 
         plt.plot(xob[0], xob[1], 'r')
         plt.plot(xob[0] + circ_x, xob[1] + circ_y, 'r')

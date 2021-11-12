@@ -159,6 +159,7 @@ include_directories(
  catkin_install_python(PROGRAMS
    src/safe_velocity_node.py
    src/dbl_int_node.py
+   src/unitree_bridge.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 
