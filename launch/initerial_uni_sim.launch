@@ -1,0 +1,8 @@
+<launch>
+
+  <arg name="server" default="localhost"/>
+
+  <node pkg="red_ord_cassie" type="safe_velocity_node.py" name="safe_velocity_node" output="screen"/>
+  <node pkg="red_ord_cassie" type="inertial_unicycle_node.py"     name="inertial_uni_node" output="screen"/>
+
+</launch>

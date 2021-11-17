@@ -1,0 +1,8 @@
+<launch>
+
+  <arg name="server" default="localhost"/>
+
+  <node pkg="red_ord_cassie" type="unitree_safe_vel.py" name="safe_velocity_node" output="screen"/>
+  <node pkg="red_ord_cassie" type="unitree_bridge.py"     name="unitree_bridhe_node" output="screen"/>
+
+</launch>

@@ -18,7 +18,7 @@ import os
 #   robot_radius    :   radius of the robot around its center, used to expand the obstacle
 #   xO              :   position of the obstacle centers
 cmd_frequency = 10 
-xgoal = np.array([[4,-1]]).T
+xgoal = np.array([[4,-1,0]]).T
 robot_radius = 0.32
 xO = np.array([[1.5,0],[3, -1.5]]).T
 # derived params
@@ -29,8 +29,9 @@ DO = (0.5+robot_radius)*np.ones((1,2))
 ## Controller Params
 #   Kp              :   proportional gain for the desired controller
 #   alpha           :   alpha parameter for the reduced order safety
-scale = 0.1
+scale = 0.05
 Kp = 1*scale
+Kw = 0.5*Kp
 alpha = 1
 
 ## ANIL: Tuneable ISSf params 
@@ -44,6 +45,7 @@ par = {
     'xO'    : xO, 
     'DO'    : DO, 
     'Kp'    : Kp, 
+    'Kw'    : Kw,
     'alpha' : alpha, 
     'dim'   : dim,
     'epsilon_0' : epsilon_0,
@@ -183,13 +185,15 @@ class safe_velocity_node():
         if self.flag_state_received == False: 
             return 
         ## ANIL: Added epsilon signal as an output
-        # u_np , epslon = self.K_CBF()
+        u_np = self.K_des()
         epslon = 0 
-        u_socp = self.K_CBF_SOCP()
-        u_np = u_socp
+        # u_np , epslon = self.K_CBF()
+        # epslon = 0 
+        # u_socp = self.K_CBF_SOCP()
+        # u_np = u_socp
 
         self.cmdVel.linear.x = u_np[0,0]
-        self.cmdVel.linear.y = u_np[1,0]
+        self.cmdVel.angular.z = u_np[1,0]
 
         # Publish for simple sim
         self.pub.publish(self.cmdVel)
@@ -201,7 +205,7 @@ class safe_velocity_node():
 
         # Data logging
         self.u_des_traj.append(u_np[0:2])
-        self.h_traj.append(self.CBF()[0])
+        # self.h_traj.append(self.CBF()[0])
         self.epsilon_traj.append(epslon)
 
     def K_CBF(self):
@@ -209,13 +213,15 @@ class safe_velocity_node():
         z = self.state 
         alpha = par['alpha']
         udes =self.K_des()
-        h, Lfh, Lgh, LghLgh = self.CBF() 
+        # h, Lfh, Lgh, LghLgh = self.CBF() 
         # ANIL: Modified phi function with ISSf
-        epslon = par['epsilon_0']*pow(2.71828,par['lambda_0']*h)
-        phi = Lfh + Lgh@udes + alpha*h - 1/epslon
-        u = udes + max(0, -phi)*Lgh.T/LghLgh
+        # epslon = par['epsilon_0']*pow(2.71828,par['lambda_0']*h)
+        epslon  = 0 
+        # phi = Lfh + Lgh@udes + alpha*h - 1/epslon
+        # u = udes + max(0, -phi)*Lgh.T/LghLgh
         # ANIL: send epsilon signal as an output
-        return u, epslon
+        ###TODO :: ADD THE BARRIER STUFF BACK
+        return udes, epslon
 
     def CBF(self): 
         ## Returns CBF values: h, Lfh, Lghm LghLgh 
@@ -224,7 +230,6 @@ class safe_velocity_node():
         xO = par['xO']
         DO = par['DO']
         x = z[0:dim,:]
-        psi = z[dim,:][0]
 
         # Calculate h values
         hk = np.zeros((len(DO[0]),1))
@@ -244,71 +249,20 @@ class safe_velocity_node():
 
         return h, Lfh, Lgh, LghLgh 
 
-
-    def CBF1(self): 
-        ## Returns CBF values: h, Lfh, Lghm LghLgh 
-        z = self.state
-        dim = par['dim']
-        xO = par['xO']
-        DO = par['DO']
-        x = z[0:dim,:]
-        psi = z[dim,:][0]
-
-        # Calculate h values
-        hk = np.zeros((len(DO[0]),1))
-
-        kob = 0 
-        xob = np.array([xO[:,kob]]).T
-        Dob = DO[0,kob]
-        h = np.linalg.norm(x-xob) - Dob
-
-
-        # Calculate Lfh, Lgh, LghLgh' for only the closest barrier (See: Egerstedt "Nonsmooth Composable CBFs")
-        idx = kob
-        xob = np.array([xO[:,idx]]).T
-        gradh = ((x - xob)/np.linalg.norm(x - xob)).T 
-        Lfh = 0 
-        Lgh = gradh
-        LghLgh = 1
-
-        return h, Lfh, Lgh, LghLgh 
-
-    def CBF2(self): 
-        ## Returns CBF values: h, Lfh, Lghm LghLgh 
-        z = self.state
-        dim = par['dim']
-        xO = par['xO']
-        DO = par['DO']
-        x = z[0:dim,:]
-        psi = z[dim,:][0]
-
-        # Calculate h values
-        hk = np.zeros((len(DO[0]),1))
-
-        kob = 1 
-        xob = np.array([xO[:,kob]]).T
-        Dob = DO[0,kob]
-        h = np.linalg.norm(x-xob) - Dob
-
-
-        # Calculate Lfh, Lgh, LghLgh' for only the closest barrier (See: Egerstedt "Nonsmooth Composable CBFs")
-        idx = kob
-        xob = np.array([xO[:,idx]]).T
-        gradh = ((x - xob)/np.linalg.norm(x - xob)).T 
-        Lfh = 0 
-        Lgh = gradh
-        LghLgh = 1
-
-        return h, Lfh, Lgh, LghLgh 
-
     def K_des(self):
         ## Records and returns unfiltered velocity values        
         z = self.state 
         xgoal = par['xgoal']
         dim = par['dim']
         x = z[0:dim,:]
-        udes = -Kp*(x-xgoal)
+        dist_goal = np.linalg.norm(x[0:2]-xgoal[0:2])
+        udes = np.array([[
+            Kp*dist_goal,
+            -Kw*(np.sin(x[2])-(xgoal[1]-x[1])/dist_goal)[0]
+        ]]).T
+        print( x[1])
         self.u_traj.append(udes)
+        print(udes)
 
         return udes
 

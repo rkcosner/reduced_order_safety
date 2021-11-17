@@ -15,8 +15,8 @@ class node():
         rospy.init_node('unitree_tlm', anonymous=True)
         
         self.rate = rospy.Rate(5) # 10hz
-        rospy.Subscriber("/des_vel", Twist, self.velCallback)
-        self.pub = rospy.Publisher('/vicon/rover7/rover7', TransformStamped, queue_size=10)
+        rospy.Subscriber("/cmd", Twist, self.velCallback)
+        self.pub = rospy.Publisher('/simStates', Twist, queue_size=10)
 
 
 
@@ -30,12 +30,12 @@ class node():
         # rospy.loginfo(hello_str)
         # pub.publish(hello_str)
 
-        msg = TransformStamped()
-        msg.transform.translation.x = tlm_data[5][0] 
-        msg.transform.translation.y = tlm_data[5][1]
-        msg.transform.translation.z = 0 
-        msg.transform.rotation.z = np.sin(tlm_data[5][5]/2)
-        msg.transform.rotation.w = np.cos(tlm_data[5][5]/2)
+        msg = Twist()
+        msg.linear.x = tlm_data[5][0] 
+        msg.linear.y = tlm_data[5][1]
+        msg.linear.z = tlm_data[5][5]
+        # msg.angular.z = np.sin(tlm_data[5][5]/2)
+        # msg.angular.w = np.cos(tlm_data[5][5]/2)
         
         self.pub.publish(msg)
 
@@ -44,7 +44,6 @@ class node():
         des_vx = data.linear.x
         des_wz = data.angular.z
         walk_mpc_idqp(vx = des_vx, vrz = des_wz)
-        print('des vel received')
         # print("Des vel = [ ", des_vx, ", ", des_wz, " ]" )
 
 

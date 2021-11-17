@@ -8,12 +8,12 @@ from datetime import datetime
 import os 
 
 
-class dbl_int_node(): 
+class inertial_uni_node(): 
 
     def __init__(self): 
 
         ## Init ROS node
-        rospy.init_node('dbl_int_node', anonymous=True)
+        rospy.init_node('inertial_uni_node', anonymous=True)
 
         ## Init publishers and subscribers: 
         #   /cmd                    :   sends velocity reference commands 
@@ -29,40 +29,43 @@ class dbl_int_node():
         #   dt                      :   time constant for the dynamics
         #   A                       :   Euler integration A
         #   B                       :   Euler integration B
-        self.state = np.array([[0.,0.,0.,0.]]).T
+        self.state = np.array([[0.,0.,0.,0.,0.,0.]]).T
         self.input = np.array([[0.,0.]]).T
         self.Kv = 1
         self.dt = 0.1
-        self.A = np.array([[0, 0, 1, 0], 
-                           [0, 0, 0, 1], 
-                           [0, 0, 0, 0], 
-                           [0, 0, 0, 0]])
-        self.A = (np.eye(4)+self.dt*self.A)
-        self.B = self.dt*np.array([[0, 0], 
-                           [0, 0], 
-                           [1, 0], 
-                           [0, 1]])
 
     def cmdCallback(self, data): 
         self.v_ref = np.array([[data.linear.x, data.linear.y]]).T
-        self.lowLevelController()
+        # self.lowLevelController()
 
     def lowLevelController(self): 
-        self.input = -self.Kv*(self.state[2:] - self.v_ref)
+        self.input = -self.Kv*(self.state[] - self.v_ref)
         
     def updateState(self): 
-        self.state = self.A@self.state + self.B@self.input
+        self.eulerStep()
         msg = Twist()
         msg.linear.x = self.state[0,0]
         msg.linear.y = self.state[1,0]
-        msg.linear.z = np.arctan2(self.state[3,0], self.state[2,0])
+        msg.linear.z = np.arctan2(self.state[3,0], self.state[2,0]) - np.pi/2
         self.pub.publish(msg)
+
+    def eulerStep(self):
+        x = self.state 
+        dyn = np.array([[
+            x[3,0], 
+            x[4,0],
+            x[5,0],
+            np.cos(x[2,0])*self.input[0,0], 
+            np.sin(x[2,0])*self.input[0,0], 
+            self.input[1,0] 
+        ]])
+        self.state = x + self.dt*dyn
 
 
 if __name__ =="__main__": 
 
     # Init Node
-    node = dbl_int_node()
+    node = inertial_uni_node()
     rate = rospy.Rate(1/node.dt) # 1000hz
     
     # Run till a kill_cmd is received 
