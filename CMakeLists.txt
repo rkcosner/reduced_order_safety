@@ -162,6 +162,7 @@ include_directories(
    src/unitree_bridge.py
    src/inertial_unicycle_node.py
    src/unitree_safe_vel.py
+   src/optitrack_vis.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 

@@ -2,7 +2,7 @@
 import rospy
 from std_msgs.msg import String
 import sys 
-sys.path.append('/home/drew/unitreeSim/mpac_a1/atnmy')
+sys.path.append('/home/rkcosner/Documents/Research/Unitree/unitree_ws/src/mpac_a1/atnmy')
 from mpac_cmd import * 
 
 from geometry_msgs.msg import TransformStamped

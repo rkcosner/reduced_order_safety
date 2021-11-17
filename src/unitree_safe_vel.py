@@ -2,6 +2,9 @@ import rospy
 import numpy as np 
 import scipy as sp 
 from geometry_msgs.msg import Twist
+from visualization_msgs.msg import Marker
+from visualization_msgs.msg import MarkerArray
+from nav_msgs.msg import Odometry
 import ecos 
 import std_msgs.msg
 import matplotlib.pyplot as plt 
@@ -26,6 +29,8 @@ R = 0.25
 
 alpha = 10
 
+visual_offset = 0.26 #m 
+
 
 # Store Parameters in Dict
 par = {
@@ -44,12 +49,21 @@ par = {
 class safe_velocity_node(): 
 
     def __init__(self): 
-        self.pub = rospy.Publisher('cmd', Twist, queue_size=1)
-        self.sub = rospy.Subscriber('simStates', Twist, self.stateCallback)
-
         rospy.init_node('safe_velocity', anonymous=True)
 
         self.flag_state_received = False
+
+        self.pub = rospy.Publisher('cmd', Twist, queue_size=1)
+        self.pubVis = rospy.Publisher('unitree_pose', Marker, queue_size=1 )
+
+        # if True: # use unitree onboard states         
+        rospy.Subscriber('simStates', Twist, self.stateCallback)
+        # else: # Use SLAM
+        # rospy.Subscriber('t265/odom/sample', Odometry, self.slamCallback) 
+
+        rospy.Subscriber('barrier_IDs', MarkerArray, self.barrierIDsCallback)
+
+
         self.state = np.array([[0.,0.,0.]]).T
         self.cmdVel = Twist()
 
@@ -58,6 +72,7 @@ class safe_velocity_node():
         self.x_traj = []
         self.u_des_traj = []
         self.h_traj = []
+        self.obs_traj = []
 
         self.L_ah = 1 
         self.L_lfh = 1 
@@ -65,6 +80,9 @@ class safe_velocity_node():
         self.L_lgh2 = 1 
         self.sigma = 0.0
         self.gamma = 0.0
+
+        # Visualization 
+        self.quadMarker = Marker()
 
 
     def stateCallback(self, data): 
@@ -76,7 +94,47 @@ class safe_velocity_node():
         self.state[2,0] = data.linear.z
         # data logging
 
+        point = np.array([[data.linear.x, data.linear.y, data.linear.z]]).T
+        self.addMarker(point)
+        self.pubVis.publish(self.quadMarker)
+
         self.x_traj.append([data.linear.x, data.linear.y, data.linear.z])
+
+
+    def slamCallback(self, data): 
+        if self.flag_state_received == False: 
+            self.flag_state_received = True
+        
+
+        q_z = data.pose.pose.orientation.z
+        q_w = data.pose.pose.orientation.w
+        yaw = np.arctan2(2*q_w*q_z, 1-2*q_z**2)
+
+        self.state[0,0] = data.pose.pose.position.x - visual_offset*np.cos(yaw)
+        self.state[1,0] = data.pose.pose.position.y - visual_offset*np.sin(yaw) 
+        self.state[2,0] = yaw
+
+        self.x_traj.append([self.state[0,0], self.state[1,0], self.state[2,0]])
+
+
+    def barrierIDsCallback(self, data):
+        ## Receive and Update Barrier Positions
+        # - reads barrier_IDs message 
+        # - resets xO to the measured positions
+        # - sets Dob to be the appropriate length 
+        # - records obstacle locations
+
+        print("new barriers")
+        xO = []
+        for marker in data.markers: 
+            pose = [marker.pose.position.x, marker.pose.position.y]
+            xO.append(pose)
+            self.obs_traj.append(pose)
+        xO = np.array(xO).T
+        par["xO"] = xO
+        par["DO"] = (0.5+r_a1)*np.ones((1, xO.shape[1]))
+        print(xO)
+
 
     def pubCmd(self):
         if self.flag_state_received == False: 
@@ -264,7 +322,30 @@ class safe_velocity_node():
         return udes
         
         
+    def addMarker(self, point): 
+        # Add point at location pt as a marker in the marker_array
+        pt = point
 
+        marker = Marker()
+        marker.header.frame_id = "t265_odom_frame"
+        marker.type = marker.ARROW
+        marker.action = marker.ADD
+        marker.scale.x = 0.3
+        marker.scale.y = 0.3
+        marker.scale.z = 0.3
+        marker.color.a = 1
+        marker.color.r = 1 
+        marker.color.g = 1 
+        marker.color.b = 0
+        marker.lifetime = rospy.Duration(0, 10000)
+        marker.pose.orientation.w = 1.0
+        marker.id = 0
+        marker.pose.position.x = pt[0,0] 
+        marker.pose.position.y = pt[1,0]
+        marker.pose.orientation.z = np.sin(pt[2,0]/2)
+        marker.pose.orientation.w = np.cos(pt[2,0]/2) 
+
+        self.quadMarker = marker
 
 
 if __name__ =="__main__": 
@@ -278,6 +359,8 @@ if __name__ =="__main__":
     x_traj = np.squeeze(np.array(node.x_traj))
     u_traj = np.squeeze(np.array(node.u_traj))
     u_des_traj = np.squeeze(np.array(node.u_des_traj))
+    obs_traj = np.squeeze(np.array(node.obs_traj))
+    h_traj = np.array(node.h_traj)
 
     print(x_traj)
 
@@ -285,29 +368,29 @@ if __name__ =="__main__":
 
     print(os.getcwd())
 
-    date_string = "/home/drew/ReducedOrderSafety/catkin_ws/src/mrcbf_IROS21/datalogs/" + today.strftime("%Y_%m_%d_%H_%M")
-    print(date_string)
-    np.save(date_string+"_x_traj.npy", node.x_traj)
-    np.save(date_string+"_u_traj.npy", node.u_traj)
-    np.save(date_string+"_u_des_traj.npy", node.u_des_traj)
-    np.save(date_string+"_h_traj.npy", node.h_traj)
-    
+    filename_string = "/home/rkcosner/Documents/Research/RO_Cassie/catkin_ws/src/reduced_order_safety_cassie/datalogs/" + today.strftime("%Y_%m_%d_%H_%M")
+    print(filename_string)
+    np.save(filename_string+"_x_traj.npy", node.x_traj)
+    np.save(filename_string+"_u_traj.npy", node.u_traj)
+    np.save(filename_string+"_u_des_traj.npy", node.u_des_traj)
+    np.save(filename_string+"_h_traj.npy", node.h_traj)
+    np.save(filename_string+"_obs_traj.npy", node.obs_traj)
 
-    h_traj = np.array(node.h_traj)
-
+   # Obstacle Details for plotting
     theta = np.linspace(0,2*np.pi + 0.1)
     circ_x = DO[0,0]*np.cos(theta)
     circ_y = DO[0,0]*np.sin(theta)
 
+
+    # Plot Everything
     plt.figure()
-
-    print("x  = ", x_traj[:,0])
-    print("y  = ", x_traj[:,1])
-
     plt.plot(x_traj[:,0],x_traj[:,1])
-    for xob in xO.T: 
-        plt.plot(xob[0], xob[1], 'r')
-        plt.plot(xob[0] + circ_x, xob[1] + circ_y, 'r')
+    if len(obs_traj) > 0: 
+        plt.plot(obs_traj[:,0], obs_traj[:,1], '.')
+    if False: # Plot default circles
+        for xob in xO.T: 
+            plt.plot(xob[0], xob[1], 'r')
+            plt.plot(xob[0] + circ_x, xob[1] + circ_y, 'r')
     ax = plt.gca()
     ax.set_aspect('equal')
     plt.legend(['state', 'obs1', 'obs2'])
@@ -322,4 +405,10 @@ if __name__ =="__main__":
     plt.hlines(0, xmin=0, xmax=len(h_traj), linestyles='dashed')
     plt.legend(['CBF'])
 
+    # ## ANIL: Added epsilon plot
+    # plt.figure()
+    # plt.plot(epsilon_traj)
+    # plt.legend(['epsilon'])
+
     plt.show()
+
