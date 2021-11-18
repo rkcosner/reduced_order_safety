@@ -8,13 +8,6 @@ from unitree_bridge_utils import *
 
 
 
-
-
-
-
-
-        
-
 if __name__ == '__main__':
 
     node_instance = unitree_bridge_node()

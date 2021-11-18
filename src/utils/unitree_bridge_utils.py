@@ -28,32 +28,44 @@ class unitree_bridge_node():
         # Setup Publishers and Subscribers
         rospy.Subscriber("/cmd", Twist, self.velCallback)
         rospy.Subscriber("/simOnSwitch", Bool, self.simOnSwitchCallback)
-        self.pub = rospy.Publisher('/simStates', Twist, queue_size=1)
+        self.pubUnitreeStates = rospy.Publisher('/unitreeOnboardStates', Twist, queue_size=1)
+        self.pubVis = rospy.Publisher('unitree_pose', Marker, queue_size=1 )
 
         # Object Attributes
         self.running = False
+        self.markerExists = False
 
     def simOnSwitchCallback(self, msg): 
         self.running = msg.data
+        info = "Sim on/off switch changed to " + str(msg.data)
+        rospy.loginfo(info)
 
     def read_and_publish_tlm(self):
+
+        # Catch Error if there's no tlm yet because the unitree hasn't started
         tlm_data = get_tlm_data()
         if tlm_data == None: 
             rospy.logerr("No tlm received from unitree")
             rospy.sleep(0.5)
             return 
 
+        # Publish unitree onboard states as Twist
         msg = Twist()
         msg.linear.x = tlm_data[5][0] 
         msg.linear.y = tlm_data[5][1]
-        msg.linear.z = tlm_data[5][5]
-        # msg.angular.z = np.sin(tlm_data[5][5]/2)
-        # msg.angular.w = np.cos(tlm_data[5][5]/2)
-        
-        self.pub.publish(msg)
+        msg.angular.z = tlm_data[5][5]
+        self.pubUnitreeStates.publish(msg)
 
+        # Create or Update Marker and publish
+        pose = np.array([[msg.linear.x, msg.linear.y, msg.angular.z]]).T
+        quadMarker = createMarker(4, pose, self.markerExists)
+        self.pubVis.publish(quadMarker)
+        if not self.markerExists: 
+            self.markerExists = True
 
     def velCallback(self, data):
+        # Send velocities to the unitree
+        # Send lie command if the experiment is ended
         des_vx = data.linear.x
         des_wz = data.angular.z
         if self.running:

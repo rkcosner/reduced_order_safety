@@ -56,10 +56,9 @@ class safe_velocity_node():
         self.flag_state_received = False
 
         self.pub = rospy.Publisher('cmd', Twist, queue_size=1)
-        self.pubVis = rospy.Publisher('unitree_pose', Marker, queue_size=1 )
 
         # if True: # use unitree onboard states         
-        rospy.Subscriber('simStates', Twist, self.stateCallback)
+        rospy.Subscriber('unitreeOnboardStates', Twist, self.stateCallback)
         # else: # Use SLAM
         # rospy.Subscriber('t265/odom/sample', Odometry, self.slamCallback) 
 
@@ -93,13 +92,10 @@ class safe_velocity_node():
 
         self.state[0,0] = data.linear.x
         self.state[1,0] = data.linear.y
-        self.state[2,0] = data.linear.z
+        self.state[2,0] = data.angular.z
         # data logging
 
         point = np.array([[data.linear.x, data.linear.y, data.linear.z]]).T
-        self.addMarker(point)
-        self.pubVis.publish(self.quadMarker)
-
         self.x_traj.append([data.linear.x, data.linear.y, data.linear.z])
 
 
@@ -323,31 +319,6 @@ class safe_velocity_node():
 
         return udes
         
-        
-    def addMarker(self, point): 
-        # Add point at location pt as a marker in the marker_array
-        pt = point
-
-        marker = Marker()
-        marker.header.frame_id = "t265_odom_frame"
-        marker.type = marker.ARROW
-        marker.action = marker.ADD
-        marker.scale.x = 0.3
-        marker.scale.y = 0.3
-        marker.scale.z = 0.3
-        marker.color.a = 1
-        marker.color.r = 1 
-        marker.color.g = 1 
-        marker.color.b = 0
-        marker.lifetime = rospy.Duration(0, 10000)
-        marker.pose.orientation.w = 1.0
-        marker.id = 0
-        marker.pose.position.x = pt[0,0] 
-        marker.pose.position.y = pt[1,0]
-        marker.pose.orientation.z = np.sin(pt[2,0]/2)
-        marker.pose.orientation.w = np.cos(pt[2,0]/2) 
-
-        self.quadMarker = marker
 
 
 if __name__ =="__main__": 
