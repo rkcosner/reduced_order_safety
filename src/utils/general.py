@@ -5,11 +5,13 @@ from visualization_msgs.msg import Marker
 import numpy as np
 
 realsense_offset = 0.26 
+robot_radius = 0.32
 optitrack_adjust_y = -1 
 
 # Node update rates
 optitrack_vis_freq = 10
 unitree_bridge_freq = 20 
+controller_freq = 20 
 
 
 # Create Visualization Markers

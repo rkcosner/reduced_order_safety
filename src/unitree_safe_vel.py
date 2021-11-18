@@ -1,37 +1,11 @@
-import rospy 
-import numpy as np 
-import scipy as sp 
-from geometry_msgs.msg import Twist
-from visualization_msgs.msg import Marker
-from visualization_msgs.msg import MarkerArray
-from nav_msgs.msg import Odometry
-import ecos 
-import std_msgs.msg
-import matplotlib.pyplot as plt 
-from datetime import datetime
-import os 
+#!/usr/bin/env python
+import rospkg
+import sys 
+rospack = rospkg.RosPack()
+sys.path.append(rospack.get_path('red_ord_unitree')+'/src/utils/')
 
+from unitree_safe_vel_utils import * 
 
-
-# Problem Params
-cmd_frequency = 10 
-xgoal = np.array([[4,-1]]).T
-dim = len(xgoal)
-r_a1 = 0.32
-xO = np.array([[1.5,0],[3, -1.5]]).T
-DO = (0.5+r_a1)*np.ones((1,2))
-
-# Controller Params
-scale = 0.5
-Kp = 0.2*scale
-Kv = 0.08*scale
-delta = 0.1
-Kom = 0.4*scale
-R = 0.25
-
-alpha = 10
-
-visual_offset = 0.26 #m 
 
 
 # Store Parameters in Dict
@@ -130,7 +104,7 @@ class safe_velocity_node():
             self.obs_traj.append(pose)
         xO = np.array(xO).T
         par["xO"] = xO
-        par["DO"] = (0.5+r_a1)*np.ones((1, xO.shape[1]))
+        par["DO"] = (0.5+robot_radius)
         print(xO)
 
 
@@ -150,25 +124,10 @@ class safe_velocity_node():
 
         # data logging
         self.u_des_traj.append(u_np[0:2])
-        self.h_traj.append(self.CBF()[0])
-
-    def K_CBF(self):
-        z = self.state 
-        alpha = par['alpha']
-        R = par['R']
-        udes =self.K_des()
-        #Safety Filter 
-        h, Lfh, Lgh, LghLgh = self.CBF() 
-        W=np.array([[1,0],[0,1/R]])
-        phi = Lfh + Lgh@udes + alpha*h
-        # u = udes + max(0, -phi)*Lgh.T/LghLgh
-        u = udes + W@(max(0,-phi)*(Lgh@W).T)/((Lgh@W)@(Lgh@W).T)
-
-        return u
 
 
     def K_CBF_SOCP(self):
-        barrier_bits = self.getBarrierBit()
+        barrier_bits = self.getBarrierBits()
         G = [[-1/np.sqrt(2), 0, 0], 
             [-1/np.sqrt(2), 0, 0 ], 
             [0, -1, 0], 
@@ -229,39 +188,32 @@ class safe_velocity_node():
         npsi = np.array([[-np.sin(psi),np.cos(psi)]]).T
 
         # Control Barrier Function 
-        hk = np.zeros((len(DO[0]),1))
-        for kob in range(len(DO[0])): 
+        hk = np.zeros((xO.shape[1],1))
+        for kob in range(xO.shape[1]): 
             xob = np.array([xO[:,kob]]).T
             robs = DO[0,kob]
             dobs = np.linalg.norm(x-xob)
-
             nobs = (x - xob)/dobs
             nobstpsi = nobs.T@tpsi
             hk[kob] = dobs - robs +delta*nobstpsi
 
-
         # Use only the closest obstacle
-        h = hk.min()
-        idx = hk.argmin()
-        xob = np.array([xO[:,idx]]).T
-        d = np.linalg.norm(x - xob)
-        r = DO[0,idx]
-        nO = (x - xob)/d 
-        nOtpsi = nO.T@tpsi #np.dot(nO.T, tpsi)
+        if len(hk) > 0: 
+            h = hk.min()
+            idx = hk.argmin()
+            xob = np.array([xO[:,idx]]).T
+            d = np.linalg.norm(x - xob)
+            r = DO
+            nO = (x - xob)/d 
+            nOtpsi = nO.T@tpsi #np.dot(nO.T, tpsi)
+            h = d - r + delta*nOtpsi[0,0]
+            self.h_traj.append(h)
+        else: 
+            self.h_traj.append(0.42)
 
 
-        Lfh = 0
-        h = d - r + delta*nOtpsi[0,0]
-        nOnpsi = nO.T@npsi
 
-        Lgh = np.array([nOtpsi[0] + delta/d*(1-nOtpsi[0]**2), delta*nOnpsi[0]]).T
-        LghLgh = Lgh@Lgh.T
-
-
-        return h, Lfh, Lgh, LghLgh 
-
-
-    def getBarrierBit(self):
+    def getBarrierBits(self):
         z = self.state
         dim = par['dim']
         xO = par['xO']
@@ -277,10 +229,10 @@ class safe_velocity_node():
         barrier_bits = []
 
         # Control Barrier Function 
-        hk = np.zeros((len(DO[0]),1))
-        for kob in range(len(DO[0])): 
+        hk = np.zeros((xO.shape[1],1))
+        for kob in range(xO.shape[1]): 
             xob = np.array([xO[:,kob]]).T
-            robs = DO[0,kob]
+            robs = DO
             dobs = np.linalg.norm(x-xob)
 
             nobs = (x - xob)/dobs
@@ -289,7 +241,7 @@ class safe_velocity_node():
 
             xob = np.array([xO[:,kob]]).T
             d = np.linalg.norm(x - xob)
-            r = DO[0,kob]
+            r = DO
             nO = (x - xob)/d 
             nOtpsi = nO.T@tpsi #np.dot(nO.T, tpsi)
 
@@ -323,7 +275,7 @@ class safe_velocity_node():
 
 if __name__ =="__main__": 
     node = safe_velocity_node()
-    rate = rospy.Rate(cmd_frequency) # 10hz
+    rate = rospy.Rate(controller_freq) # 10hz
     while not rospy.is_shutdown():
         node.pubCmd()
 
