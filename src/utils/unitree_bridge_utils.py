@@ -20,10 +20,8 @@ from mpac_cmd import *
 class unitree_bridge_node(): 
     def __init__(self):
         
-        # Start Standing 
+        # Initialize the Node and Stand in Place
         stand_idqp()
-
-        # Initialize the Node
         rospy.init_node('unitree_bridge', anonymous=True)
         self.rate = rospy.Rate(unitree_bridge_freq) # 10hz
 
@@ -40,12 +38,10 @@ class unitree_bridge_node():
 
     def read_and_publish_tlm(self):
         tlm_data = get_tlm_data()
-        # if tlm_data.size>0:
-        #     print(tlm_data[5])
-        # else: 
-        #     print("empty") 
-        # rospy.loginfo(hello_str)
-        # pub.publish(hello_str)
+        if tlm_data == None: 
+            rospy.logerr("No tlm received from unitree")
+            rospy.sleep(0.5)
+            return 
 
         msg = Twist()
         msg.linear.x = tlm_data[5][0] 
