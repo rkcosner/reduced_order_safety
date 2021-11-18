@@ -116,16 +116,9 @@ class safe_velocity_node():
         # Setup SOCP Variables
         barrier_bits = self.getBarrierBits()
         u_des = self.K_des()
-        G, b, cones, SOCP_dims, cost = setupSOCP(barrier_bits, u_des)
-        ecos_solver_output = ecos.solve(cost, G, b, SOCP_dims, verbose=False)
+        return setupSOCP(barrier_bits, u_des)
 
-        if ecos_solver_output['info']['exitFlag'] ==0 or ecos_solver_output['info']['exitFlag'] ==10: 
-            # ECOS Solver Successful
-            return np.expand_dims(ecos_solver_output['x'][1:3],1)
-        else: 
-            # ECOS Solver Failed 
-            rospy.logwarn('SOCP failed') # Filter falls back to zero input
-            return np.array([[0],[0]])
+
 
 
     # Composed CBF Value 

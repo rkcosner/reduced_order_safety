@@ -92,4 +92,12 @@ def setupSOCP(barrier_bits, u_des):
 
     cost = np.array([1.0, -u_des[0].item(),  R**2*-u_des[1].item()])
 
-    return G, b, cones, SOCP_dims, cost
+    ecos_solver_output = ecos.solve(cost, G, b, SOCP_dims, verbose=False)
+
+    if ecos_solver_output['info']['exitFlag'] ==0 or ecos_solver_output['info']['exitFlag'] ==10: 
+        # ECOS Solver Successful
+        return np.expand_dims(ecos_solver_output['x'][1:3],1)
+    else: 
+        # ECOS Solver Failed 
+        rospy.logwarn('SOCP failed') # Filter falls back to zero input
+
