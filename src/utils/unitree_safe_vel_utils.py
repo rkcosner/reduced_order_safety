@@ -42,3 +42,54 @@ R = 0.25
 alpha = 10
 
 visual_offset = 0.26 #m 
+
+# Store Parameters in Dict
+par = {
+    'xgoal' : xgoal, 
+    'xO'    : xO, 
+    'DO'    : DO, 
+    'Kp'    : Kp, 
+    'alpha' : alpha, 
+    'Kv'    : Kv, 
+    'dim'   : dim,
+    'delta' : delta,
+    'Kom'   : Kom,
+    'R'     : R
+}
+
+def setupSOCP(barrier_bits, u_des):
+    G = [[-1/np.sqrt(2), 0, 0], 
+    [-1/np.sqrt(2), 0, 0 ], 
+    [0, -1, 0], 
+    [0, 0, -R]]
+        
+    b = [1/np.sqrt(2), 
+        -1/np.sqrt(2), 
+        0, 
+        0]
+    cones = [4] 
+
+    for bit in barrier_bits: 
+        cones.append(3)
+        h = bit[0]
+        Lfh = bit[1]
+        Lgh = bit[2]
+        LghLgh = bit[3]
+        G.append([0, -Lgh[0,0],  -Lgh[0,1]])
+        G.append([0, -self.gamma*self.L_lgh, 0])
+        G.append([0, 0, -self.gamma*self.L_lgh])
+        b.append( (Lfh + par['alpha']*h - (self.L_lfh + self.sigma*self.L_lgh + self.L_ah)*self.gamma - self.sigma*LghLgh).item() )
+        b.append(0)
+        b.append(0)
+    G = sp.sparse.csc_matrix(G)
+    b = np.array(b)
+
+    SOCP_dims = {
+        'l':0,      # linear cone size
+        'q':cones,  # second order cone size
+        'e':0       # exponential cone sizes
+    }
+
+    cost = np.array([1.0, -u_des[0].item(),  R**2*-u_des[1].item()])
+
+    return G, b, cones, SOCP_dims, cost

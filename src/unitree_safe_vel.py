@@ -8,20 +8,6 @@ from unitree_safe_vel_utils import *
 
 
 
-# Store Parameters in Dict
-par = {
-    'xgoal' : xgoal, 
-    'xO'    : xO, 
-    'DO'    : DO, 
-    'Kp'    : Kp, 
-    'alpha' : alpha, 
-    'Kv'    : Kv, 
-    'dim'   : dim,
-    'delta' : delta,
-    'Kom'   : Kom,
-    'R'     : R
-}
-
 class safe_velocity_node(): 
 
     def __init__(self): 
@@ -82,8 +68,8 @@ class safe_velocity_node():
         q_w = data.pose.pose.orientation.w
         yaw = np.arctan2(2*q_w*q_z, 1-2*q_z**2)
 
-        self.state[0,0] = data.pose.pose.position.x - visual_offset*np.cos(yaw)
-        self.state[1,0] = data.pose.pose.position.y - visual_offset*np.sin(yaw) 
+        self.state[0,0] = data.pose.pose.position.x - realsense_offset*np.cos(yaw)
+        self.state[1,0] = data.pose.pose.position.y - realsense_offset*np.sin(yaw) 
         self.state[2,0] = yaw
 
         self.x_traj.append([self.state[0,0], self.state[1,0], self.state[2,0]])
@@ -127,49 +113,18 @@ class safe_velocity_node():
 
 
     def K_CBF_SOCP(self):
+        # Setup SOCP Variables
         barrier_bits = self.getBarrierBits()
-        G = [[-1/np.sqrt(2), 0, 0], 
-            [-1/np.sqrt(2), 0, 0 ], 
-            [0, -1, 0], 
-            [0, 0, -R]]
-        
-        b = [1/np.sqrt(2), 
-            -1/np.sqrt(2), 
-            0, 
-            0]
-
-        cones = [4] 
-        
-        for bit in barrier_bits: 
-            cones.append(3)
-            h = bit[0]
-            Lfh = bit[1]
-            Lgh = bit[2]
-            LghLgh = bit[3]
-            G.append([0, -Lgh[0,0],  -Lgh[0,1]])
-            G.append([0, -self.gamma*self.L_lgh, 0])
-            G.append([0, 0, -self.gamma*self.L_lgh])
-            b.append( (Lfh + par['alpha']*h - (self.L_lfh + self.sigma*self.L_lgh + self.L_ah)*self.gamma - self.sigma*LghLgh).item() )
-            b.append(0)
-            b.append(0)
-        G = sp.sparse.csc_matrix(G)
-        b = np.array(b)
-        
-        SOCP_dims = {
-            'l':0,      # linear cone size
-            'q':cones,  # second order cone size
-            'e':0       # exponential cone sizes
-        }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
         u_des = self.K_des()
-        cost = np.array([1.0, -u_des[0].item(),  R**2*-u_des[1].item()])
+        G, b, cones, SOCP_dims, cost = setupSOCP(barrier_bits, u_des)
         ecos_solver_output = ecos.solve(cost, G, b, SOCP_dims, verbose=False)
 
-        if ecos_solver_output['info']['exitFlag'] ==0 or ecos_solver_output['info']['exitFlag'] ==10: # ECOS Solver Successful
-            u_des = np.expand_dims(ecos_solver_output['x'][1:3],1)
-            return u_des
-        else: # ECOS Solver Failed 
-            rospy.logwarn('SOCP failed') # Filter falls back to previous self.inputAct_
+        if ecos_solver_output['info']['exitFlag'] ==0 or ecos_solver_output['info']['exitFlag'] ==10: 
+            # ECOS Solver Successful
+            return np.expand_dims(ecos_solver_output['x'][1:3],1)
+        else: 
+            # ECOS Solver Failed 
+            rospy.logwarn('SOCP failed') # Filter falls back to zero input
             return np.array([[0],[0]])
 
 
