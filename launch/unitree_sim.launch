@@ -1,13 +1,22 @@
 <launch>
 
   <arg name="server" default="localhost"/>
-
+  <!-- Learning Parameters -->
+  <arg name="A" default="10"/>
+  <arg name="B" default="0"/>
+  <arg name="C" default="0"/>
+  <arg name="D" default="0"/>
+  
   <!--Visulation-->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find occupancy)/rviz/barrier_gen.rviz"/>
 
   <!--Safe Controller-->
   <node pkg="red_ord_unitree" type="unitree_safe_vel.py" name="safe_velocity_node" output="screen">
       <param name="experiment_type" type="int" value="0"/>
+      <param name="A" value="$(arg A)"/>
+      <param name="B" value="$(arg B)"/>
+      <param name="C" value="$(arg C)"/>
+      <param name="D" value="$(arg D)"/>
   </node>
 
   <!--Unitree-ROS Bridge-->

@@ -11,6 +11,11 @@ if __name__ =="__main__":
 
     # Get Experiment Type Param 
     experiment_type = rospy.get_param("/safe_velocity_node/experiment_type")
+    learningParam_A = rospy.get_param("/safe_velocity_node/A") # alpha: barrier function parameter
+    learningParam_B = rospy.get_param("/safe_velocity_node/B") # sigma: ISSf user tunable parameter
+    learningParam_C = rospy.get_param("/safe_velocity_node/C") # epsilon*(L_ah+L_lfh_L_lghlgh): Mrcbf param
+    learningParam_D = rospy.get_param("/safe_velocity_node/D") # epsilon*L_lgh: Mrcbf param 
+
     if experiment_type == 0: 
         print("Running in simulation mode")
     elif experiment_type == 1: 
@@ -18,11 +23,11 @@ if __name__ =="__main__":
     elif experiment_type == 2: 
         print("Running in outdoor mode")
 
-
-
+    print("Learning Parameters = [", learningParam_A, learningParam_B, learningParam_C, learningParam_D,"]")
+    rospy.sleep(2)
 
     # Create node and loop publishing commands
-    node = safe_velocity_node(experiment_type)
+    node = safe_velocity_node(experiment_type, learningParam_A, learningParam_B, learningParam_C, learningParam_D)
     rate = rospy.Rate(controller_freq) # 10hz
     while not rospy.is_shutdown():
         node.pubCmd()
@@ -42,6 +47,7 @@ if __name__ =="__main__":
 
     filename_string = "/home/rkcosner/Documents/Research/RO_unitree/catkin_ws/src/reduced_order_safety_unitree/datalogs/" + today.strftime("%Y_%m_%d_%H_%M")
     print(filename_string)
+    np.save(filename_string+"_learning_params.npy", np.array([learningParam_A, learningParam_B, learningParam_C, learningParam_D]))
     np.save(filename_string+"_x_traj.npy", node.x_traj)
     np.save(filename_string+"_x_mocap_traj.npy", node.x_mocap_traj)
     np.save(filename_string+"_u_traj.npy", node.u_traj)

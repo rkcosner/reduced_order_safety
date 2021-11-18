@@ -56,7 +56,7 @@ par = {
     'R'     : R
 }
 
-def K_CBF_SOCP(barrier_bits, u_des, L_ah, L_lfh, L_lgh, L_lgh2, sigma, gamma, alpha):
+def K_CBF_SOCP(barrier_bits, u_des, alpha, sigma, MRCBF_add, MRCBF_mult):
     G = [[-1/np.sqrt(2), 0, 0], 
     [-1/np.sqrt(2), 0, 0 ], 
     [0, -1, 0], 
@@ -75,9 +75,9 @@ def K_CBF_SOCP(barrier_bits, u_des, L_ah, L_lfh, L_lgh, L_lgh2, sigma, gamma, al
         Lgh = bit[2]
         LghLgh = bit[3]
         G.append([0, -Lgh[0,0],  -Lgh[0,1]])
-        G.append([0, -gamma*L_lgh, 0])
-        G.append([0, 0, -gamma*L_lgh])
-        b.append( (Lfh + alpha*h - (L_lfh + sigma*L_lgh + L_ah)*gamma - sigma*LghLgh).item() )
+        G.append([0, -MRCBF_mult, 0])
+        G.append([0, 0, -MRCBF_mult])
+        b.append( (Lfh + alpha*h - (sigma*MRCBF_mult+MRCBF_add) - sigma*LghLgh).item() )
         b.append(0)
         b.append(0)
     G = sp.sparse.csc_matrix(G)
@@ -159,7 +159,7 @@ def saturate(input):
 
 class safe_velocity_node(): 
 
-    def __init__(self, experiment_type): 
+    def __init__(self, experiment_type, A, B, C, D): 
         rospy.init_node('safe_velocity', anonymous=True)
 
         self.flag_state_received = False
@@ -201,13 +201,11 @@ class safe_velocity_node():
         self.tower2_mocap_pose = np.empty((0,0))        
         self.tower3_mocap_pose = np.empty((0,0))        
         
-        self.L_ah = 1 
-        self.L_lfh = 1 
-        self.L_lgh = 1 
-        self.L_lgh2 = 1 
-        self.sigma = 0.0
-        self.gamma = 0.0
-        self.alpha =  10
+        self.alpha = A
+        self.sigma = B
+        self.MRCBF_add = C
+        self.MRCBF_mult = D
+
 
 
     def stateCallback(self, data): 
@@ -231,7 +229,7 @@ class safe_velocity_node():
         q_w = data.pose.pose.orientation.w
         yaw = np.arctan2(2*q_w*q_z, 1-2*q_z**2)
 
-        self.state[0,0] = data.pose.pose.position.x - realsense_offset*np.cos(yaw)
+        self.state[0,0] = data.pose.pose.position.x - realsense_offset*np.cos(yaw) + realsense_offset
         self.state[1,0] = data.pose.pose.position.y - realsense_offset*np.sin(yaw) 
         self.state[2,0] = yaw
 
@@ -285,7 +283,7 @@ class safe_velocity_node():
         # Filter through CBF SOCP
         barrier_bits = self.getBarrierBits()
 
-        u_np = K_CBF_SOCP(barrier_bits, u_des, self.L_ah, self.L_lfh, self.L_lgh, self.L_lgh2, self.sigma, self.gamma, self.alpha)
+        u_np = K_CBF_SOCP(barrier_bits,u_des, self.alpha, self.sigma, self.MRCBF_add, self.MRCBF_mult)
         u_np = saturate(u_np)
 
         # Publish v_cmd

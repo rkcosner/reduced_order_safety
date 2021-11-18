@@ -15,6 +15,7 @@ for title in data_files:
 
 date = title[0:17]
 print("showing data from ", date)
+learning_params = np.load("./"+date+"learning_params.npy")
 x_traj = np.load("./"+date+"x_traj.npy")
 x_mocap_traj = np.load("./"+date+"x_mocap_traj.npy")
 u_traj = np.load("./"+date+"u_traj.npy")
@@ -26,6 +27,7 @@ tower1_mocap_pose = np.load("./"+date+"tower1_mocap_pose.npy")
 tower2_mocap_pose = np.load("./"+date+"tower2_mocap_pose.npy")
 tower3_mocap_pose = np.load("./"+date+"tower3_mocap_pose.npy")
 
+title = "learning params: [" + str(learning_params[0])+ ", " +str(learning_params[1]) +", "+str(learning_params[2]) +", "+str(learning_params[3]) +"]"
 
 xO = [tower1_mocap_pose, tower2_mocap_pose, tower3_mocap_pose]
 
@@ -41,7 +43,7 @@ circ_y = DO*np.sin(theta)
 plt.figure()
 plt.plot(x_traj[:,0],x_traj[:,1])
 if len(x_mocap_traj)>0:
-    plt.plot(x_mocap_traj[:,0], x_mocap_traj[:,1])
+    plt.plot(x_mocap_traj[:,0], x_mocap_traj[:,1])# epsilon*(L_ah+L_lfh_L_lghlgh): Mrcbf param
 if len(obs_traj)>0:
     plt.plot(obs_traj[0,:], obs_traj[1,:], '.')
     for i in range(len(obs_traj)):
@@ -54,17 +56,20 @@ for xob in xO:
 ax = plt.gca()
 ax.set_aspect('equal')
 plt.legend(['state', 'obs1', 'obs2'])
+plt.title(title)
 
 plt.figure()
 plt.plot(u_traj, 'r--')
 plt.plot(u_des_traj, 'g')
 plt.legend(['$v_{des}$', '$w_{des}$', '$v_{cbf}$', '$w_{cbf}$'])
+plt.title(title)
 
 plt.figure()
 plt.plot(h_meas_traj, '--')
 plt.plot(h_true_traj)
 plt.hlines(0, xmin=0, xmax=len(h_meas_traj))
 plt.legend(['Measured CBF', 'True CBF'])
+plt.title(title)
 
 # ## ANIL: Added epsilon plot
 # plt.figure()
