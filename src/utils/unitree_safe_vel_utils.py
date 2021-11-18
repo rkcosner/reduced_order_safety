@@ -26,7 +26,7 @@ import ecos
 
 ###########################################################
 # Problem Params
-xgoal = np.array([[4,-1]]).T
+xgoal = np.array([[4,-1.5]]).T
 dim = len(xgoal)
 xO =  np.empty((0,0)) #
 xOsim = np.array([[1.5,0],[3, -1.5]]).T#
@@ -99,6 +99,7 @@ def K_CBF_SOCP(barrier_bits, u_des, alpha, sigma, MRCBF_add, MRCBF_mult):
     else: 
         # ECOS Solver Failed 
         rospy.logwarn('SOCP failed') # Filter falls back to zero input
+        return np.array([[0,0]]).T
 
 def measureCBFutil(z, xO): 
     dim = par['dim']
@@ -199,7 +200,10 @@ class safe_velocity_node():
         self.obs_traj = [par["xO"]]
         self.tower1_mocap_pose = np.empty((0,0))
         self.tower2_mocap_pose = np.empty((0,0))        
-        self.tower3_mocap_pose = np.empty((0,0))        
+        self.tower3_mocap_pose = np.empty((0,0))     
+        if self.experiment_type == 0:
+            self.tower1_mocap_pose = [xOsim[0][0],xOsim[1][0] ]
+            self.tower2_mocap_pose = [xOsim[0][1],xOsim[1][1] ]
         
         self.alpha = A
         self.sigma = B
@@ -218,6 +222,9 @@ class safe_velocity_node():
         
         # data logging
         self.x_traj.append([data.linear.x, data.linear.y, data.linear.z])
+        
+
+        self.obs_traj.append(par['xO'])
 
 
     def slamCallback(self, data): 
@@ -284,11 +291,19 @@ class safe_velocity_node():
         barrier_bits = self.getBarrierBits()
 
         u_np = K_CBF_SOCP(barrier_bits,u_des, self.alpha, self.sigma, self.MRCBF_add, self.MRCBF_mult)
-        u_np = saturate(u_np)
 
         # Publish v_cmd
-        self.cmdVel.linear.x = u_np[0,0]
-        self.cmdVel.angular.z =  u_np[1,0]
+        self.cmdVel.angular.z = u_np[1,0]
+
+        if self.experiment_type == 0: 
+            # Add drift experimental
+            self.cmdVel.linear.x = u_np[0,0]+0.05
+        else:        
+            self.cmdVel.linear.x = u_np[0,0]
+
+
+        u_np = saturate(u_np)
+
         self.pub.publish(self.cmdVel)
 
         # Log Data
@@ -301,7 +316,7 @@ class safe_velocity_node():
         h = measureCBFutil(z, par["xO"])
         self.h_meas_traj.append(h)
 
-        if self.experiment_type == 1: 
+        if self.experiment_type == 1 or self.experiment_type == 0 : 
             # If in lab with mocap record ground truth
             towers = [self.tower1_mocap_pose, self.tower2_mocap_pose, self.tower3_mocap_pose]
             xO_true = []

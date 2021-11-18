@@ -29,12 +29,24 @@ if __name__ =="__main__":
     # Create node and loop publishing commands
     node = safe_velocity_node(experiment_type, learningParam_A, learningParam_B, learningParam_C, learningParam_D)
     rate = rospy.Rate(controller_freq) # 10hz
+
+    period = 100
+    step = 0 
     while not rospy.is_shutdown():
         node.pubCmd()
+        if experiment_type == 0: 
+            #Mess with the barrier measurements here for the simulation
+            step+=1
+            par['xO']= xOsim - 0.1*np.array([[0,0],[1,1]])#0.1*np.array([[np.cos(step/period*2*np.pi), np.sin(step/period*2*np.pi)],
+                                #        [-np.sin(step/period*2*np.pi), np.cos(step/period*2*np.pi)]])#np.random.normal(loc=0, scale=0.1, size=xOsim.shape )
+            if step == period:
+                step = 0 
+
         rate.sleep()
 
 
     # Save Data
+    print(node.obs_traj)
     x_traj = np.squeeze(np.array(node.x_traj))
     x_mocap_traj = np.squeeze(np.array(node.x_mocap_traj))
     u_traj = np.squeeze(np.array(node.u_traj))

@@ -27,14 +27,15 @@ tower1_mocap_pose = np.load("./"+date+"tower1_mocap_pose.npy")
 tower2_mocap_pose = np.load("./"+date+"tower2_mocap_pose.npy")
 tower3_mocap_pose = np.load("./"+date+"tower3_mocap_pose.npy")
 
+print(obs_traj)
 title = "learning params: [" + str(learning_params[0])+ ", " +str(learning_params[1]) +", "+str(learning_params[2]) +", "+str(learning_params[3]) +"]"
 
 xO = [tower1_mocap_pose, tower2_mocap_pose, tower3_mocap_pose]
 
 u_traj = np.squeeze(u_traj)
 u_des_traj = np.squeeze(u_des_traj)
-obs_traj = np.squeeze(obs_traj)
 
+obs_traj = np.squeeze(obs_traj)
 theta = np.linspace(0,2*np.pi + 0.1)
 circ_x = DO*np.cos(theta)
 circ_y = DO*np.sin(theta)
@@ -44,10 +45,11 @@ plt.figure()
 plt.plot(x_traj[:,0],x_traj[:,1])
 if len(x_mocap_traj)>0:
     plt.plot(x_mocap_traj[:,0], x_mocap_traj[:,1])# epsilon*(L_ah+L_lfh_L_lghlgh): Mrcbf param
-if len(obs_traj)>0:
-    plt.plot(obs_traj[0,:], obs_traj[1,:], '.')
-    for i in range(len(obs_traj)):
-        plt.plot(obs_traj[0,i] + circ_x, obs_traj[1,i] + circ_y, color='y', linestyle='--', linewidth=0.5)
+for i, obs in enumerate(obs_traj):
+    plt.plot(obs[0,:], obs[1,:],  'y.')
+    for ob in obs.T: 
+        if i < 20:
+            plt.plot(ob[0] + circ_x, ob[1] + circ_y, color='y', linestyle='--', linewidth=0.5)
 
 for xob in xO: 
     if xob.size > 0: 
@@ -65,7 +67,7 @@ plt.legend(['$v_{des}$', '$w_{des}$', '$v_{cbf}$', '$w_{cbf}$'])
 plt.title(title)
 
 plt.figure()
-plt.plot(h_meas_traj, '--')
+plt.plot(h_meas_traj, '--', linewidth=0.5)
 plt.plot(h_true_traj)
 plt.hlines(0, xmin=0, xmax=len(h_meas_traj))
 plt.legend(['Measured CBF', 'True CBF'])
