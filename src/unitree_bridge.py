@@ -9,14 +9,12 @@ from unitree_bridge_utils import *
 
 
 if __name__ == '__main__':
-
-    node_instance = unitree_bridge_node()
-
+    
+    bridge_node = unitree_bridge_node()
     while not rospy.is_shutdown():
-
         try:
-            node_instance.read_and_publish_tlm()
+            bridge_node.read_and_publish_tlm()
         except rospy.ROSInterruptException:
             pass
-
-        node_instance.rate.sleep()
+        
+        bridge_node.rate.sleep()
