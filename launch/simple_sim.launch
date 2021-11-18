@@ -1,8 +1,0 @@
-<launch>
-
-  <arg name="server" default="localhost"/>
-
-  <node pkg="red_ord_cassie" type="safe_velocity_node.py" name="safe_velocity_node" output="screen"/>
-  <node pkg="red_ord_cassie" type="dbl_int_node.py"       name="dbl_int_node" output="screen"/>
-
-</launch>

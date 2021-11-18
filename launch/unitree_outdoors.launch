@@ -6,6 +6,9 @@
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find occupancy)/rviz/barrier_gen.rviz"/>
   <node name="optitrack_viz" pkg="red_ord_cassie" type="optitrack_vis.py"/>
 
+  <!--Generate Barriers-->
+  <node name="barrier_generator" pkg="occupancy" type="generate_barriers_node.py"/>
+  
   <!--Safe Controller-->
   <node pkg="red_ord_cassie" type="unitree_safe_vel.py" name="safe_velocity_node" output="screen"/>
 
@@ -13,7 +16,8 @@
   <node pkg="red_ord_cassie" type="unitree_bridge.py"     name="unitree_bridge_node" output="screen"/>
 
   <!--Record to ./bag/ -->
-  <node name="record" pkg="rosbag" type="record" args="record -o $(find red_ord_cassie)/bags/sim
-        /cmd  /unitree_pose /simStates "/>
+  <node name="record" pkg="rosbag" type="record" args="record -o $(find red_ord_cassie)/bags/outdoor
+        /cmd  /unitree_pose /occupancy /barrier_IDs /simStates /t265/odom/sample
+        /d400/aligned_depth_to_color/image_rect_raw  /d400/depth/image_rect_raw  "/>
 
 </launch>
