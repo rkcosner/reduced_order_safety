@@ -4,7 +4,7 @@ from os import listdir
 
 from numpy.core.fromnumeric import squeeze
 
-DO = 0.5
+DO = 0.5 + 0.32
 
 
 data_files = listdir('./') 
@@ -27,7 +27,6 @@ tower1_mocap_pose = np.load("./"+date+"tower1_mocap_pose.npy")
 tower2_mocap_pose = np.load("./"+date+"tower2_mocap_pose.npy")
 tower3_mocap_pose = np.load("./"+date+"tower3_mocap_pose.npy")
 
-print(obs_traj)
 title = "learning params: [" + str(learning_params[0])+ ", " +str(learning_params[1]) +", "+str(learning_params[2]) +", "+str(learning_params[3]) +"]"
 
 xO = [tower1_mocap_pose, tower2_mocap_pose, tower3_mocap_pose]

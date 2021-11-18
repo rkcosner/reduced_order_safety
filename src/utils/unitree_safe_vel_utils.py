@@ -29,8 +29,8 @@ import ecos
 xgoal = np.array([[4,-1.5]]).T
 dim = len(xgoal)
 xO =  np.empty((0,0)) #
-xOsim = np.array([[1.5,0],[3, -1.5]]).T#
-DO = 0.5#np.empty((0))
+xOsim = np.array([[1.5,0],[3, -2]]).T#
+DO = 0.5 + robot_radius#np.empty((0))
 
 # Controller Params
 scale = 0.5
