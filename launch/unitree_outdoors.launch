@@ -4,7 +4,7 @@
 
   <!--Visulation-->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find occupancy)/rviz/barrier_gen.rviz"/>
-  <node name="optitrack_viz" pkg="red_ord_unitree" type="optitrack_vis.py"/>
+  <node name="optitrack_viz" pkg="red_ord_unitree" type="optitrack_vis_node.py"/>
 
   <!--Generate Barriers-->
   <node name="barrier_generator" pkg="occupancy" type="generate_barriers_node.py"/>

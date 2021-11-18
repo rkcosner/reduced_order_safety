@@ -1,8 +1,12 @@
 #!/usr/bin/env python
-import pyutils
+import rospy
+import rospkg
+import sys 
+rospack = rospkg.RosPack()
+sys.path.append(rospack.get_path('red_ord_unitree')+'/src/utils/')
+from general import *
 
-
-class node(): 
+class optitrack_vis_node(): 
     def __init__(self):
         rospy.init_node('optitrack_vis_node', anonymous=True)
         
@@ -23,7 +27,7 @@ class node():
         self.pubUnitree.publish(marker)
 
     def tower1Callback(self, msg): 
-        marker = self.createMarker(1,msg)
+        marker = self.createMarker(1,msg) 
         self.pubTower1.publish(marker)
 
     def tower2Callback(self, msg): 
@@ -67,9 +71,3 @@ class node():
         marker.pose.position.y = pose.pose.position.y -1
         marker.pose.position.z = 0.5
         return marker
-
-if __name__ == '__main__':
-
-    node_instance = node()
-
-    rospy.spin()

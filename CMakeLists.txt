@@ -160,7 +160,7 @@ include_directories(
    src/safe_velocity_node.py
    src/unitree_bridge.py
    src/unitree_safe_vel.py
-   src/optitrack_vis.py
+   src/optitrack_vis_node.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 
