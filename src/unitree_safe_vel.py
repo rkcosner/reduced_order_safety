@@ -10,22 +10,32 @@ from unitree_safe_vel_utils import *
 
 class safe_velocity_node(): 
 
-    def __init__(self): 
+    def __init__(self, experiment_type): 
         rospy.init_node('safe_velocity', anonymous=True)
 
         self.flag_state_received = False
 
         self.pub = rospy.Publisher('cmd', Twist, queue_size=1)
 
-        # if True: # use unitree onboard states         
-        rospy.Subscriber('unitreeOnboardStates', Twist, self.stateCallback)
-        rospy.Subscriber("/vrpn_client_node/Tower1/pose", PoseStamped, self.tower1Callback)
-        rospy.Subscriber("/vrpn_client_node/Tower2/pose", PoseStamped, self.tower2Callback)
-        rospy.Subscriber("/vrpn_client_node/Tower3/pose", PoseStamped, self.tower3Callback)
-        # else: # Use SLAM
-        # rospy.Subscriber('t265/odom/sample', Odometry, self.slamCallback) 
+        if experiment_type == 0: #Sim 
+            # Use default barrier positions (in unitree_safe_vel_utils) and use true sim position
+            par["xO"] = xOsim
+            rospy.Subscriber('unitreeOnboardStates', Twist, self.stateCallback)
+        elif experiment_type == 1: # In lab  
+            # Use measured barrier positions and SLAM. Also, record ground truth  
+            rospy.Subscriber("/vrpn_client_node/Unitree/pose", PoseStamped, self.unitreeMocapCallback)
+            rospy.Subscriber("/vrpn_client_node/Tower1/pose", PoseStamped, self.tower1Callback)
+            rospy.Subscriber("/vrpn_client_node/Tower2/pose", PoseStamped, self.tower2Callback)
+            rospy.Subscriber("/vrpn_client_node/Tower3/pose", PoseStamped, self.tower3Callback)
+            rospy.Subscriber('barrier_IDs', MarkerArray, self.barrierIDsCallback)
+            rospy.Subscriber('t265/odom/sample', Odometry, self.slamCallback) 
+        elif experiment_type == 2: # Outside
+            # Use measured barrier positions and SLAM.
+            rospy.Subscriber('barrier_IDs', MarkerArray, self.barrierIDsCallback)
+            rospy.Subscriber('t265/odom/sample', Odometry, self.slamCallback) 
 
-        rospy.Subscriber('barrier_IDs', MarkerArray, self.barrierIDsCallback)
+        self.experiment_type = experiment_type
+        
 
         self.state = np.array([[0.,0.,0.]]).T
         self.cmdVel = Twist()
@@ -33,9 +43,11 @@ class safe_velocity_node():
         # record values 
         self.u_traj = []
         self.x_traj = []
+        self.x_mocap_traj = []
         self.u_des_traj = []
         self.h_meas_traj = []
-        self.obs_traj = []
+        self.h_true_traj = []
+        self.obs_traj = [par["xO"]]
         self.tower1_mocap_pose = np.empty((0,0))
         self.tower2_mocap_pose = np.empty((0,0))        
         self.tower3_mocap_pose = np.empty((0,0))        
@@ -58,7 +70,6 @@ class safe_velocity_node():
         self.state[2,0] = data.angular.z
         
         # data logging
-        point = np.array([[data.linear.x, data.linear.y, data.linear.z]]).T
         self.x_traj.append([data.linear.x, data.linear.y, data.linear.z])
 
 
@@ -92,20 +103,28 @@ class safe_velocity_node():
             xO.append(pose)
             self.obs_traj.append(pose)
         xO = np.array(xO).T
+        if len(xO) == 0: 
+            xO = np.empty((0,0))
         par["xO"] = xO
         par["DO"] = (0.5+robot_radius)
         print(xO)
 
     def tower1Callback(self, data):
-        if self.tower1_mocap_pose.size == 0: 
-            self.tower1_mocap_pose = np.array([data.pose.position.x, data.pose.position.y])
+        if len(self.tower1_mocap_pose) == 0: 
+            self.tower1_mocap_pose = [data.pose.position.x, data.pose.position.y]
     def tower2Callback(self, data):
-        if self.tower2_mocap_pose.size == 0: 
-            self.tower2_mocap_pose = np.array([data.pose.position.x, data.pose.position.y])
+        if len(self.tower2_mocap_pose) == 0: 
+            self.tower2_mocap_pose = [data.pose.position.x, data.pose.position.y]
     def tower3Callback(self, data):
-        if self.tower3_mocap_pose.size == 0: 
-            self.tower3_mocap_pose = np.array([data.pose.position.x, data.pose.position.y])
-    
+        if len(self.tower3_mocap_pose) == 0: 
+            self.tower3_mocap_pose = [data.pose.position.x, data.pose.position.y]
+    def unitreeMocapCallback(self, data): 
+        q_z = data.pose.orientation.z
+        q_w = data.pose.orientation.w
+        yaw = np.arctan2(2*q_w*q_z, 1-2*q_z**2)
+        self.x_mocap_traj.append([data.pose.position.x, data.pose.position.y, yaw])
+
+
     def pubCmd(self):
         if self.flag_state_received == False: 
             return 
@@ -132,8 +151,18 @@ class safe_velocity_node():
     def measureCBF(self): 
         # Measured CBF Value 
         z = self.state
-        h = measureCBFutil(z)
+        h = measureCBFutil(z, par["xO"])
         self.h_meas_traj.append(h)
+
+        if self.experiment_type == 1: 
+            # If in lab with mocap record ground truth
+            towers = [self.tower1_mocap_pose, self.tower2_mocap_pose, self.tower3_mocap_pose]
+            xO_true = []
+            for t in towers: 
+                if len(t) > 0: 
+                    xO_true.append(t)
+            xO_true = np.asarray(xO_true).T
+            self.h_true_traj.append(measureCBFutil(z, xO_true))
 
     def getBarrierBits(self):
         z = self.state
@@ -152,7 +181,6 @@ class safe_velocity_node():
 
         # Control Barrier Function 
         hk = np.zeros((xO.shape[1],1))
-        print(xO)
         for kob in range(xO.shape[1]): 
             xob = np.array([xO[:,kob]]).T
             robs = DO
@@ -183,7 +211,18 @@ class safe_velocity_node():
 
 
 if __name__ =="__main__": 
-    node = safe_velocity_node()
+
+    experiment_type = rospy.get_param("/safe_velocity_node/experiment_type")
+
+    if experiment_type == 0: 
+        print("Running in simulation mode")
+    elif experiment_type == 1: 
+        print("Running in indoor mode")
+    elif experiment_type == 2: 
+        print("Running in outdoor mode")
+
+
+    node = safe_velocity_node(experiment_type)
     rate = rospy.Rate(controller_freq) # 10hz
     while not rospy.is_shutdown():
         node.pubCmd()
@@ -191,23 +230,25 @@ if __name__ =="__main__":
         rate.sleep()
 
     x_traj = np.squeeze(np.array(node.x_traj))
+    x_mocap_traj = np.squeeze(np.array(node.x_mocap_traj))
     u_traj = np.squeeze(np.array(node.u_traj))
     u_des_traj = np.squeeze(np.array(node.u_des_traj))
     obs_traj = np.squeeze(np.array(node.obs_traj))
     h_meas_traj = np.array(node.h_meas_traj)
+    h_true_traj = np.array(node.h_true_traj)
 
-    print(x_traj)
 
     today = datetime.now()
 
-    print(os.getcwd())
 
     filename_string = "/home/rkcosner/Documents/Research/RO_unitree/catkin_ws/src/reduced_order_safety_unitree/datalogs/" + today.strftime("%Y_%m_%d_%H_%M")
     print(filename_string)
     np.save(filename_string+"_x_traj.npy", node.x_traj)
+    np.save(filename_string+"_x_mocap_traj.npy", node.x_mocap_traj)
     np.save(filename_string+"_u_traj.npy", node.u_traj)
     np.save(filename_string+"_u_des_traj.npy", node.u_des_traj)
     np.save(filename_string+"_h_meas_traj.npy", node.h_meas_traj)
+    np.save(filename_string+"_h_true_traj.npy", node.h_true_traj)
     np.save(filename_string+"_obs_traj.npy", node.obs_traj)
     np.save(filename_string+"_tower1_mocap_pose.npy", node.tower1_mocap_pose)
     np.save(filename_string+"_tower2_mocap_pose.npy", node.tower2_mocap_pose)

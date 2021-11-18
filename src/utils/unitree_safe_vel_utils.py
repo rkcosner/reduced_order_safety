@@ -28,7 +28,8 @@ import ecos
 # Problem Params
 xgoal = np.array([[4,-1]]).T
 dim = len(xgoal)
-xO = np.array([[1.5,0],[3, -1.5]]).T# np.empty((0,0)) #
+xO =  np.empty((0,0)) #
+xOsim = np.array([[1.5,0],[3, -1.5]]).T#
 DO = 0.5#np.empty((0))
 
 # Controller Params
@@ -99,9 +100,8 @@ def K_CBF_SOCP(barrier_bits, u_des, L_ah, L_lfh, L_lgh, L_lgh2, sigma, gamma, al
         # ECOS Solver Failed 
         rospy.logwarn('SOCP failed') # Filter falls back to zero input
 
-def measureCBFutil(z): 
+def measureCBFutil(z, xO): 
     dim = par['dim']
-    xO = par['xO']
     DO = par['DO']
     delta = par['delta']
 
