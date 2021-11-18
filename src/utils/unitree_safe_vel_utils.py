@@ -28,18 +28,17 @@ import ecos
 # Problem Params
 xgoal = np.array([[4,-1]]).T
 dim = len(xgoal)
-xO = np.empty((0,0)) #np.array([[1.5,0],[3, -1.5]]).T
-DO = np.empty((0))
+xO = np.array([[1.5,0],[3, -1.5]]).T# np.empty((0,0)) #
+DO = 0.5#np.empty((0))
 
 # Controller Params
 scale = 0.5
 Kp = 0.2*scale
 Kv = 0.08*scale
-delta = 0.1
+delta = 0.25
 Kom = 0.4*scale
 R = 0.25
 
-alpha = 10
 
 visual_offset = 0.26 #m 
 
@@ -49,7 +48,6 @@ par = {
     'xO'    : xO, 
     'DO'    : DO, 
     'Kp'    : Kp, 
-    'alpha' : alpha, 
     'Kv'    : Kv, 
     'dim'   : dim,
     'delta' : delta,
@@ -57,7 +55,7 @@ par = {
     'R'     : R
 }
 
-def setupSOCP(barrier_bits, u_des):
+def K_CBF_SOCP(barrier_bits, u_des, L_ah, L_lfh, L_lgh, L_lgh2, sigma, gamma, alpha):
     G = [[-1/np.sqrt(2), 0, 0], 
     [-1/np.sqrt(2), 0, 0 ], 
     [0, -1, 0], 
@@ -76,9 +74,9 @@ def setupSOCP(barrier_bits, u_des):
         Lgh = bit[2]
         LghLgh = bit[3]
         G.append([0, -Lgh[0,0],  -Lgh[0,1]])
-        G.append([0, -self.gamma*self.L_lgh, 0])
-        G.append([0, 0, -self.gamma*self.L_lgh])
-        b.append( (Lfh + par['alpha']*h - (self.L_lfh + self.sigma*self.L_lgh + self.L_ah)*self.gamma - self.sigma*LghLgh).item() )
+        G.append([0, -gamma*L_lgh, 0])
+        G.append([0, 0, -gamma*L_lgh])
+        b.append( (Lfh + alpha*h - (L_lfh + sigma*L_lgh + L_ah)*gamma - sigma*LghLgh).item() )
         b.append(0)
         b.append(0)
     G = sp.sparse.csc_matrix(G)
@@ -101,3 +99,44 @@ def setupSOCP(barrier_bits, u_des):
         # ECOS Solver Failed 
         rospy.logwarn('SOCP failed') # Filter falls back to zero input
 
+def measureCBFutil(z): 
+    dim = par['dim']
+    xO = par['xO']
+    DO = par['DO']
+    delta = par['delta']
+
+    x = z[0:dim,:]
+    psi = z[dim,:][0]
+
+    tpsi = np.array([[np.cos(psi), np.sin(psi)]]).T
+
+    # Control Barrier Function 
+    hk = np.zeros((xO.shape[1],1))
+    for kob in range(xO.shape[1]): 
+        xob = np.array([xO[:,kob]]).T
+        robs = DO
+        dobs = np.linalg.norm(x-xob)
+        nobs = (x - xob)/dobs
+        nobstpsi = nobs.T@tpsi
+        hk[kob] = dobs - robs +delta*nobstpsi
+
+    # Use only the closest obstacle
+    if len(hk) > 0: 
+        h = hk.min()
+        idx = hk.argmin()
+        xob = np.array([xO[:,idx]]).T
+        d = np.linalg.norm(x - xob)
+        r = DO
+        nO = (x - xob)/d 
+        nOtpsi = nO.T@tpsi #np.dot(nO.T, tpsi)
+        h = d - r + delta*nOtpsi[0,0]
+        return h
+    else: 
+        return 0.42
+
+def saturate(input): 
+    max_input = [0.5, 1]
+    for i in range(2):
+        if np.abs(input[i,0])>max_input[i]:
+            input[i,0] = max_input[i]*np.sign(input[i,0])
+    return input

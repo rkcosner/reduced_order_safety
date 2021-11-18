@@ -32,7 +32,7 @@ class safe_velocity_node():
         self.u_traj = []
         self.x_traj = []
         self.u_des_traj = []
-        self.h_traj = []
+        self.h_meas_traj = []
         self.obs_traj = []
 
         self.L_ah = 1 
@@ -41,6 +41,8 @@ class safe_velocity_node():
         self.L_lgh2 = 1 
         self.sigma = 0.0
         self.gamma = 0.0
+        self.alpha =  10
+
 
         # Visualization 
         self.quadMarker = Marker()
@@ -98,66 +100,30 @@ class safe_velocity_node():
         if self.flag_state_received == False: 
             return 
 
+        # Get Desired Input
+        u_des = self.K_des()
 
-        u_np = self.K_CBF_SOCP()#self.K_CBF()
-        # print("SOCP", u_np)
-        # u_np = self.K_CBF()
-        # print("HAND", u_np)
+        # Filter through CBF SOCP
+        barrier_bits = self.getBarrierBits()
 
+        u_np = K_CBF_SOCP(barrier_bits, u_des, self.L_ah, self.L_lfh, self.L_lgh, self.L_lgh2, self.sigma, self.gamma, self.alpha)
+        u_np = saturate(u_np)
+
+        # Publish v_cmd
         self.cmdVel.linear.x = u_np[0,0]
         self.cmdVel.angular.z =  u_np[1,0]
         self.pub.publish(self.cmdVel)
 
-        # data logging
+        # Log Data
         self.u_des_traj.append(u_np[0:2])
-
-
-    def K_CBF_SOCP(self):
-        # Setup SOCP Variables
-        barrier_bits = self.getBarrierBits()
-        u_des = self.K_des()
-        return setupSOCP(barrier_bits, u_des)
-
-
-
+        self.measureCBF()
 
     # Composed CBF Value 
-    def CBF(self): 
+    def measureCBF(self): 
         z = self.state
-        dim = par['dim']
-        xO = par['xO']
-        DO = par['DO']
-        delta = par['delta']
+        h = measureCBFutil(z)
+        self.h_meas_traj.append(h)
 
-        x = z[0:dim,:]
-        psi = z[dim,:][0]
-
-        tpsi = np.array([[np.cos(psi), np.sin(psi)]]).T
-        npsi = np.array([[-np.sin(psi),np.cos(psi)]]).T
-
-        # Control Barrier Function 
-        hk = np.zeros((xO.shape[1],1))
-        for kob in range(xO.shape[1]): 
-            xob = np.array([xO[:,kob]]).T
-            robs = DO[0,kob]
-            dobs = np.linalg.norm(x-xob)
-            nobs = (x - xob)/dobs
-            nobstpsi = nobs.T@tpsi
-            hk[kob] = dobs - robs +delta*nobstpsi
-
-        # Use only the closest obstacle
-        if len(hk) > 0: 
-            h = hk.min()
-            idx = hk.argmin()
-            xob = np.array([xO[:,idx]]).T
-            d = np.linalg.norm(x - xob)
-            r = DO
-            nO = (x - xob)/d 
-            nOtpsi = nO.T@tpsi #np.dot(nO.T, tpsi)
-            h = d - r + delta*nOtpsi[0,0]
-            self.h_traj.append(h)
-        else: 
-            self.h_traj.append(0.42)
 
 
 
@@ -178,6 +144,7 @@ class safe_velocity_node():
 
         # Control Barrier Function 
         hk = np.zeros((xO.shape[1],1))
+        print(xO)
         for kob in range(xO.shape[1]): 
             xob = np.array([xO[:,kob]]).T
             robs = DO
@@ -233,7 +200,7 @@ if __name__ =="__main__":
     u_traj = np.squeeze(np.array(node.u_traj))
     u_des_traj = np.squeeze(np.array(node.u_des_traj))
     obs_traj = np.squeeze(np.array(node.obs_traj))
-    h_traj = np.array(node.h_traj)
+    h_meas_traj = np.array(node.h_meas_traj)
 
     print(x_traj)
 
@@ -246,5 +213,5 @@ if __name__ =="__main__":
     np.save(filename_string+"_x_traj.npy", node.x_traj)
     np.save(filename_string+"_u_traj.npy", node.u_traj)
     np.save(filename_string+"_u_des_traj.npy", node.u_des_traj)
-    np.save(filename_string+"_h_traj.npy", node.h_traj)
+    np.save(filename_string+"_h_meas_traj.npy", node.h_meas_traj)
     np.save(filename_string+"_obs_traj.npy", node.obs_traj)

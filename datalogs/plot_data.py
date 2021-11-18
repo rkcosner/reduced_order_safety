@@ -16,7 +16,7 @@ print("showing data from ", date)
 x_traj = np.load("./"+date+"x_traj.npy")
 u_traj = np.load("./"+date+"u_traj.npy")
 u_des_traj = np.load("./"+date+"u_des_traj.npy")
-h_traj = np.load("./"+date+"h_traj.npy")
+h_traj = np.load("./"+date+"h_meas_traj.npy")
 obs_traj = np.load("./"+date+"obs_traj.npy")
 
 u_traj = np.squeeze(u_traj)
@@ -25,7 +25,6 @@ u_des_traj = np.squeeze(u_des_traj)
 theta = np.linspace(0,2*np.pi + 0.1)
 circ_x = DO*np.cos(theta)
 circ_y = DO*np.sin(theta)
-
 
 # Plot Everything
 plt.figure()
