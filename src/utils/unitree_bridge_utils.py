@@ -9,7 +9,7 @@ from general import *
 # Import message types
 from geometry_msgs.msg import TransformStamped
 from geometry_msgs.msg import Twist
-import std_msgs.msg import Bool
+from std_msgs.msg import Bool
 
 
 # Import unitree python interface
