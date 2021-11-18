@@ -3,6 +3,9 @@ from visualization_msgs.msg import Marker
 
 realsense_offset = 0.26 
 
+# Node update rates
+optitrack_vis_freq = 10
+unitree_bridge_freq = 20 
 
 
 # Create Visualization Markers

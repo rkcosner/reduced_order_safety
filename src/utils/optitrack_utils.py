@@ -13,7 +13,7 @@ class optitrack_vis_node():
         rospy.init_node('optitrack_vis_node', anonymous=True)
         
         # Set up Publishers and subscribers
-        self.rate = rospy.Rate(10) 
+        self.rate = rospy.Rate(optitrack_vis_freq) 
         rospy.Subscriber("/vrpn_client_node/Unitree/pose", PoseStamped, self.unitreeCallback)
         rospy.Subscriber("/vrpn_client_node/Tower1/pose", PoseStamped, self.tower1Callback)
         rospy.Subscriber("/vrpn_client_node/Tower2/pose", PoseStamped, self.tower2Callback)
