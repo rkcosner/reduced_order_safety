@@ -134,6 +134,19 @@ def measureCBFutil(z):
     else: 
         return 0.42
 
+def K_des(z):
+    xgoal = par['xgoal']
+    dim = par['dim']
+    Kv = par['Kv']    
+    Kom = par['Kom']
+    x = z[0:dim,:]
+    psi = z[dim,:][0]
+    udes = np.array([[Kv*np.linalg.norm(x-xgoal), 
+                    -Kom*(np.sin(psi) - (xgoal[1][0]-x[1][0])/np.linalg.norm(x-xgoal) )]]).T
+
+    return udes
+        
+
 def saturate(input): 
     max_input = [0.5, 1]
     for i in range(2):

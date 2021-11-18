@@ -19,11 +19,13 @@ class safe_velocity_node():
 
         # if True: # use unitree onboard states         
         rospy.Subscriber('unitreeOnboardStates', Twist, self.stateCallback)
+        rospy.Subscriber("/vrpn_client_node/Tower1/pose", PoseStamped, self.tower1Callback)
+        rospy.Subscriber("/vrpn_client_node/Tower2/pose", PoseStamped, self.tower2Callback)
+        rospy.Subscriber("/vrpn_client_node/Tower3/pose", PoseStamped, self.tower3Callback)
         # else: # Use SLAM
         # rospy.Subscriber('t265/odom/sample', Odometry, self.slamCallback) 
 
         rospy.Subscriber('barrier_IDs', MarkerArray, self.barrierIDsCallback)
-
 
         self.state = np.array([[0.,0.,0.]]).T
         self.cmdVel = Twist()
@@ -34,7 +36,10 @@ class safe_velocity_node():
         self.u_des_traj = []
         self.h_meas_traj = []
         self.obs_traj = []
-
+        self.tower1_mocap_pose = np.empty((0,0))
+        self.tower2_mocap_pose = np.empty((0,0))        
+        self.tower3_mocap_pose = np.empty((0,0))        
+        
         self.L_ah = 1 
         self.L_lfh = 1 
         self.L_lgh = 1 
@@ -44,10 +49,6 @@ class safe_velocity_node():
         self.alpha =  10
 
 
-        # Visualization 
-        self.quadMarker = Marker()
-
-
     def stateCallback(self, data): 
         if self.flag_state_received == False: 
             self.flag_state_received = True
@@ -55,8 +56,8 @@ class safe_velocity_node():
         self.state[0,0] = data.linear.x
         self.state[1,0] = data.linear.y
         self.state[2,0] = data.angular.z
+        
         # data logging
-
         point = np.array([[data.linear.x, data.linear.y, data.linear.z]]).T
         self.x_traj.append([data.linear.x, data.linear.y, data.linear.z])
 
@@ -95,13 +96,23 @@ class safe_velocity_node():
         par["DO"] = (0.5+robot_radius)
         print(xO)
 
-
+    def tower1Callback(self, data):
+        if self.tower1_mocap_pose.size == 0: 
+            self.tower1_mocap_pose = np.array([data.pose.position.x, data.pose.position.y])
+    def tower2Callback(self, data):
+        if self.tower2_mocap_pose.size == 0: 
+            self.tower2_mocap_pose = np.array([data.pose.position.x, data.pose.position.y])
+    def tower3Callback(self, data):
+        if self.tower3_mocap_pose.size == 0: 
+            self.tower3_mocap_pose = np.array([data.pose.position.x, data.pose.position.y])
+    
     def pubCmd(self):
         if self.flag_state_received == False: 
             return 
 
         # Get Desired Input
-        u_des = self.K_des()
+        u_des = K_des(self.state)
+        self.u_traj.append(u_des)
 
         # Filter through CBF SOCP
         barrier_bits = self.getBarrierBits()
@@ -118,14 +129,11 @@ class safe_velocity_node():
         self.u_des_traj.append(u_np[0:2])
         self.measureCBF()
 
-    # Composed CBF Value 
     def measureCBF(self): 
+        # Measured CBF Value 
         z = self.state
         h = measureCBFutil(z)
         self.h_meas_traj.append(h)
-
-
-
 
     def getBarrierBits(self):
         z = self.state
@@ -171,21 +179,7 @@ class safe_velocity_node():
 
         return barrier_bits
 
-    def K_des(self):
-        z = self.state 
-        xgoal = par['xgoal']
-        dim = par['dim']
-        Kv = par['Kv']    
-        Kom = par['Kom']
-        x = z[0:dim,:]
-        psi = z[dim,:][0]
-        udes = np.array([[Kv*np.linalg.norm(x-xgoal), 
-                        -Kom*(np.sin(psi) - (xgoal[1][0]-x[1][0])/np.linalg.norm(x-xgoal) )]]).T
-        # data logging
-        self.u_traj.append(udes)
 
-        return udes
-        
 
 
 if __name__ =="__main__": 
@@ -215,3 +209,6 @@ if __name__ =="__main__":
     np.save(filename_string+"_u_des_traj.npy", node.u_des_traj)
     np.save(filename_string+"_h_meas_traj.npy", node.h_meas_traj)
     np.save(filename_string+"_obs_traj.npy", node.obs_traj)
+    np.save(filename_string+"_tower1_mocap_pose.npy", node.tower1_mocap_pose)
+    np.save(filename_string+"_tower2_mocap_pose.npy", node.tower2_mocap_pose)
+    np.save(filename_string+"_tower3_mocap_pose.npy", node.tower3_mocap_pose)

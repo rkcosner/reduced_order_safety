@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt 
 from os import listdir
 
-DO = 0.5 + 0.32
+DO = 0.5
 
 
 data_files = listdir('./') 
@@ -18,6 +18,11 @@ u_traj = np.load("./"+date+"u_traj.npy")
 u_des_traj = np.load("./"+date+"u_des_traj.npy")
 h_traj = np.load("./"+date+"h_meas_traj.npy")
 obs_traj = np.load("./"+date+"obs_traj.npy")
+tower1_mocap_pose = np.load("./"+date+"tower1_mocap_pose.npy")
+tower2_mocap_pose = np.load("./"+date+"tower2_mocap_pose.npy")
+tower3_mocap_pose = np.load("./"+date+"tower3_mocap_pose.npy")
+
+xO = [tower1_mocap_pose, tower2_mocap_pose, tower3_mocap_pose]
 
 u_traj = np.squeeze(u_traj)
 u_des_traj = np.squeeze(u_des_traj)
@@ -31,8 +36,9 @@ plt.figure()
 plt.plot(x_traj[:,0],x_traj[:,1])
 if len(obs_traj) > 0: 
     plt.plot(obs_traj[:,0], obs_traj[:,1], '.')
-if False: # Plot default circles
-    for xob in xO.T: 
+
+for xob in xO: 
+    if xob.size > 0: 
         plt.plot(xob[0], xob[1], 'r')
         plt.plot(xob[0] + circ_x, xob[1] + circ_y, 'r')
 ax = plt.gca()
