@@ -4,16 +4,16 @@
 
   <!--Visulation-->
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find occupancy)/rviz/barrier_gen.rviz"/>
-  <node name="optitrack_viz" pkg="red_ord_cassie" type="optitrack_vis.py"/>
+  <node name="optitrack_viz" pkg="red_ord_unitree" type="optitrack_vis.py"/>
 
   <!--Safe Controller-->
-  <node pkg="red_ord_cassie" type="unitree_safe_vel.py" name="safe_velocity_node" output="screen"/>
+  <node pkg="red_ord_unitree" type="unitree_safe_vel.py" name="safe_velocity_node" output="screen"/>
 
   <!--Unitree-ROS Bridge-->
-  <node pkg="red_ord_cassie" type="unitree_bridge.py"     name="unitree_bridge_node" output="screen"/>
+  <node pkg="red_ord_unitree" type="unitree_bridge.py"     name="unitree_bridge_node" output="screen"/>
 
   <!--Record to ./bag/ -->
-  <node name="record" pkg="rosbag" type="record" args="record -o $(find red_ord_cassie)/bags/sim
+  <node name="record" pkg="rosbag" type="record" args="record -o $(find red_ord_unitree)/bags/sim
         /cmd  /unitree_pose /simStates "/>
 
 </launch>

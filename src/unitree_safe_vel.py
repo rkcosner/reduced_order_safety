@@ -368,7 +368,7 @@ if __name__ =="__main__":
 
     print(os.getcwd())
 
-    filename_string = "/home/rkcosner/Documents/Research/RO_Cassie/catkin_ws/src/reduced_order_safety_cassie/datalogs/" + today.strftime("%Y_%m_%d_%H_%M")
+    filename_string = "/home/rkcosner/Documents/Research/RO_unitree/catkin_ws/src/reduced_order_safety_unitree/datalogs/" + today.strftime("%Y_%m_%d_%H_%M")
     print(filename_string)
     np.save(filename_string+"_x_traj.npy", node.x_traj)
     np.save(filename_string+"_u_traj.npy", node.u_traj)

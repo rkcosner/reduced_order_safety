@@ -1,14 +1,6 @@
 #!/usr/bin/env python
-import rospy
-from std_msgs.msg import String
-from geometry_msgs.msg import PoseStamped
-from visualization_msgs.msg import MarkerArray
-from visualization_msgs.msg import Marker
-from geometry_msgs.msg import TransformStamped
-from geometry_msgs.msg import Twist
-import numpy as np 
+import pyutils
 
-visual_offset = 0.26 
 
 class node(): 
     def __init__(self):
@@ -71,7 +63,7 @@ class node():
         marker.pose.orientation.w = pose.pose.orientation.w
         marker.pose.orientation.z = pose.pose.orientation.z
         marker.id = id
-        marker.pose.position.x = pose.pose.position.x + visual_offset
+        marker.pose.position.x = pose.pose.position.x + realsense_offset
         marker.pose.position.y = pose.pose.position.y -1
         marker.pose.position.z = 0.5
         return marker

@@ -158,9 +158,7 @@ include_directories(
 # in contrast to setup.py, you can choose the destination
  catkin_install_python(PROGRAMS
    src/safe_velocity_node.py
-   src/dbl_int_node.py
    src/unitree_bridge.py
-   src/inertial_unicycle_node.py
    src/unitree_safe_vel.py
    src/optitrack_vis.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

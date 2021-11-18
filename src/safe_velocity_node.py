@@ -62,7 +62,7 @@ class safe_velocity_node():
 
         ## Init publishers and subscribers: 
         #   /cmd                    :   sends velocity reference commands 
-        #   /gazebo/link_states     :   gets position values from Cassie simulator 
+        #   /gazebo/link_states     :   gets position values from unitree simulator 
         #   /kill_cmd               :   ends simulation if a command of pose.x>0      
         self.pub = rospy.Publisher('cmd', Twist, queue_size=1)
         rospy.Subscriber('gazebo/link_states', LinkStates, self.stateCallbackHardware)
@@ -199,9 +199,9 @@ class safe_velocity_node():
         self.pub.publish(self.cmdVel)
 
         print("setting params")
-        # Set Parameters for Cassie (cassie listens to these vvv rosparams instead of a velocity topic)
-        rospy.set_param('cassie/locomotion_control/HLIP/HLIP_vxd', float(u_np[0,0]))
-        rospy.set_param('cassie/locomotion_control/HLIP/HLIP_vyd', float(u_np[1,0]))
+        # Set Parameters for unitree (unitree listens to these vvv rosparams instead of a velocity topic)
+        rospy.set_param('unitree/locomotion_control/HLIP/HLIP_vxd', float(u_np[0,0]))
+        rospy.set_param('unitree/locomotion_control/HLIP/HLIP_vyd', float(u_np[1,0]))
 
         # Data logging
         self.u_des_traj.append(u_np[0:2])
@@ -336,7 +336,7 @@ if __name__ =="__main__":
 
     today = datetime.now()
     print(os.getcwd())
-    filename_string = "/home/drew/catkin_ws_cassie/src/red_ord_cassie/datalogs/" + today.strftime("%Y_%m_%d_%H_%M")
+    filename_string = "/home/drew/catkin_ws_unitree/src/red_ord_unitree/datalogs/" + today.strftime("%Y_%m_%d_%H_%M")
     print(filename_string)
     np.save(filename_string+"_x_traj.npy", node.x_traj)
     np.save(filename_string+"_u_traj.npy", node.u_traj)
