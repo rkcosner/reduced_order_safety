@@ -27,6 +27,7 @@ tower1_mocap_pose = np.load("./"+date+"tower1_mocap_pose.npy")
 tower2_mocap_pose = np.load("./"+date+"tower2_mocap_pose.npy")
 tower3_mocap_pose = np.load("./"+date+"tower3_mocap_pose.npy")
 
+
 title = "learning params: [" + str(learning_params[0])+ ", " +str(learning_params[1]) +", "+str(learning_params[2]) +", "+str(learning_params[3]) +"]"
 
 xO = [tower1_mocap_pose, tower2_mocap_pose, tower3_mocap_pose]
@@ -60,15 +61,17 @@ plt.legend(['state', 'obs1', 'obs2'])
 plt.title(title)
 
 plt.figure()
-plt.plot(u_traj, 'r--')
-plt.plot(u_des_traj, 'g')
+plt.plot(u_traj[:,2], u_traj[:,0:2], 'r--')
+plt.plot(u_des_traj[:,2], u_des_traj[:,0:2], 'g')
+plt.xlabel('time [s]')
 plt.legend(['$v_{des}$', '$w_{des}$', '$v_{cbf}$', '$w_{cbf}$'])
 plt.title(title)
 
 plt.figure()
-plt.plot(h_meas_traj, '--', linewidth=0.5)
-plt.plot(h_true_traj)
-plt.hlines(0, xmin=0, xmax=len(h_meas_traj))
+plt.plot(h_meas_traj[:,1], h_meas_traj[:,0], '--', linewidth=0.5)
+plt.plot(h_true_traj[:,1], h_true_traj[:,0])
+plt.xlabel("time [s]")
+plt.hlines(0, xmin=0, xmax=h_meas_traj[-1,1])
 plt.legend(['Measured CBF', 'True CBF'])
 plt.title(title)
 

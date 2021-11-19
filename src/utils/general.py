@@ -64,3 +64,9 @@ def createMarker(id, pose, exists):
         marker.action = marker.MODIFY
 
     return marker
+
+def getTimeNow(): 
+    now = rospy.get_rostime()
+    sec = now.secs
+    nsec = now.nsecs*10**(-9) 
+    return sec + nsec

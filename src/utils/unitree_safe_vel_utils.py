@@ -29,11 +29,12 @@ import ecos
 xgoal = np.array([[4,-1.5]]).T
 dim = len(xgoal)
 xO =  np.empty((0,0)) #
-xOsim = np.array([[1.5,0],[3, -2]]).T#
+xOsim = np.array([[ 2.18142767, -2.02558239],
+                  [ 2.83602033, -0.31468012]]).T#np.array([[1.5,0],[3, -2]]).T#
 DO = 0.5 + robot_radius#np.empty((0))
 
 # Controller Params
-scale = 0.5
+scale = 0.3
 Kp = 0.2*scale
 Kv = 0.08*scale
 delta = 0.25
@@ -145,14 +146,21 @@ def K_des(z):
     udes = np.array([[Kv*np.linalg.norm(x-xgoal), 
                     -Kom*(np.sin(psi) - (xgoal[1][0]-x[1][0])/np.linalg.norm(x-xgoal) )]]).T
 
+    udes = saturate(udes)
+
     return udes
         
 
 def saturate(input): 
-    max_input = [0.5, 1]
+    max_input = [[0.3, -0.2], [0.4, -0.4]]
+
     for i in range(2):
-        if np.abs(input[i,0])>max_input[i]:
-            input[i,0] = max_input[i]*np.sign(input[i,0])
+        if input[i]>max_input[i][0]:
+            input[i]=max_input[i][0]
+            # rospy.logerr("Input Saturation Hit ")
+        elif input[i]<max_input[i][1]: 
+            input[i]=max_input[i][1]   
+            rospy.logerr("Input Saturation Hit ")
     return input
 
 
@@ -191,6 +199,7 @@ class safe_velocity_node():
         self.cmdVel = Twist()
 
         # record values 
+        self.t0 = getTimeNow()
         self.u_traj = []
         self.x_traj = []
         self.x_mocap_traj = []
@@ -198,6 +207,7 @@ class safe_velocity_node():
         self.h_meas_traj = []
         self.h_true_traj = []
         self.obs_traj = [par["xO"]]
+        self.obs_time = [self.getCurrentTime()]
         self.tower1_mocap_pose = np.empty((0,0))
         self.tower2_mocap_pose = np.empty((0,0))        
         self.tower3_mocap_pose = np.empty((0,0))     
@@ -210,7 +220,8 @@ class safe_velocity_node():
         self.MRCBF_add = C
         self.MRCBF_mult = D
 
-
+    def getCurrentTime(self):
+        return getTimeNow() - self.t0 
 
     def stateCallback(self, data): 
         if self.flag_state_received == False: 
@@ -221,10 +232,11 @@ class safe_velocity_node():
         self.state[2,0] = data.angular.z
         
         # data logging
-        self.x_traj.append([data.linear.x, data.linear.y, data.linear.z])
+        self.x_traj.append([data.linear.x, data.linear.y, data.linear.z,  self.getCurrentTime()])
         
 
         self.obs_traj.append(par['xO'])
+        self.obs_time.append(self.getCurrentTime())
 
 
     def slamCallback(self, data): 
@@ -240,7 +252,7 @@ class safe_velocity_node():
         self.state[1,0] = data.pose.pose.position.y - realsense_offset*np.sin(yaw) 
         self.state[2,0] = yaw
 
-        self.x_traj.append([self.state[0,0], self.state[1,0], self.state[2,0]])
+        self.x_traj.append([self.state[0,0], self.state[1,0], self.state[2,0], self.getCurrentTime()])
 
 
     def barrierIDsCallback(self, data):
@@ -276,7 +288,7 @@ class safe_velocity_node():
         q_z = data.pose.orientation.z
         q_w = data.pose.orientation.w
         yaw = np.arctan2(2*q_w*q_z, 1-2*q_z**2)
-        self.x_mocap_traj.append([data.pose.position.x, data.pose.position.y, yaw])
+        self.x_mocap_traj.append([data.pose.position.x, data.pose.position.y, yaw, self.getCurrentTime()])
 
 
     def pubCmd(self):
@@ -285,7 +297,7 @@ class safe_velocity_node():
 
         # Get Desired Input
         u_des = K_des(self.state)
-        self.u_traj.append(u_des)
+        self.u_traj.append([u_des[0,0], u_des[1,0],  self.getCurrentTime()])
 
         # Filter through CBF SOCP
         barrier_bits = self.getBarrierBits()
@@ -293,6 +305,7 @@ class safe_velocity_node():
         u_np = K_CBF_SOCP(barrier_bits,u_des, self.alpha, self.sigma, self.MRCBF_add, self.MRCBF_mult)
 
         # Publish v_cmd
+        u_np = saturate(u_np)
         self.cmdVel.angular.z = u_np[1,0]
 
         if self.experiment_type == 0: 
@@ -302,19 +315,17 @@ class safe_velocity_node():
             self.cmdVel.linear.x = u_np[0,0]
 
 
-        u_np = saturate(u_np)
-
         self.pub.publish(self.cmdVel)
 
         # Log Data
-        self.u_des_traj.append(u_np[0:2])
+        self.u_des_traj.append([u_np[0,0], u_np[1,0], self.getCurrentTime()] )
         self.measureCBF()
 
     def measureCBF(self): 
         # Measured CBF Value 
         z = self.state
         h = measureCBFutil(z, par["xO"])
-        self.h_meas_traj.append(h)
+        self.h_meas_traj.append([h, self.getCurrentTime()])
 
         if self.experiment_type == 1 or self.experiment_type == 0 : 
             # If in lab with mocap record ground truth
@@ -324,7 +335,7 @@ class safe_velocity_node():
                 if len(t) > 0: 
                     xO_true.append(t)
             xO_true = np.asarray(xO_true).T
-            self.h_true_traj.append(measureCBFutil(z, xO_true))
+            self.h_true_traj.append([measureCBFutil(z, xO_true), self.getCurrentTime()])
 
     def getBarrierBits(self):
         z = self.state

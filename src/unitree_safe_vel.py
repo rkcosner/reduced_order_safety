@@ -46,7 +46,6 @@ if __name__ =="__main__":
 
 
     # Save Data
-    print(node.obs_traj)
     x_traj = np.squeeze(np.array(node.x_traj))
     x_mocap_traj = np.squeeze(np.array(node.x_mocap_traj))
     u_traj = np.squeeze(np.array(node.u_traj))
@@ -56,9 +55,7 @@ if __name__ =="__main__":
     h_true_traj = np.array(node.h_true_traj)
 
     today = datetime.now()
-
     filename_string = "/home/rkcosner/Documents/Research/RO_unitree/catkin_ws/src/reduced_order_safety_unitree/datalogs/" + today.strftime("%Y_%m_%d_%H_%M")
-    print(filename_string)
     np.save(filename_string+"_learning_params.npy", np.array([learningParam_A, learningParam_B, learningParam_C, learningParam_D]))
     np.save(filename_string+"_x_traj.npy", node.x_traj)
     np.save(filename_string+"_x_mocap_traj.npy", node.x_mocap_traj)
