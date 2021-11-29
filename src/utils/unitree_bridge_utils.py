@@ -16,9 +16,11 @@ from std_msgs.msg import Bool
 sys.path.append('/home/rkcosner/Documents/Research/Unitree/unitree_ws/src/mpac_a1/atnmy')
 from mpac_cmd import * 
 
+bounding_x = [-1, 5]
+bounding_y = [-4, 2]
 
 class unitree_bridge_node(): 
-    def __init__(self):
+    def __init__(self, isSim):
         
         # Initialize the Node and Stand in Place
         stand_idqp()
@@ -32,7 +34,8 @@ class unitree_bridge_node():
         self.pubVis = rospy.Publisher('unitree_pose', Marker, queue_size=1 )
 
         # Object Attributes
-        self.running = False
+        self.isSim = isSim
+        self.running = isSim
         self.markerExists = False
 
     def simOnSwitchCallback(self, msg): 
@@ -53,11 +56,18 @@ class unitree_bridge_node():
         msg = Twist()
         msg.linear.x = tlm_data[5][0] 
         msg.linear.y = tlm_data[5][1]
-        msg.angular.z = tlm_data[5][5]
+        msg.linear.z = tlm_data[5][5]
         self.pubUnitreeStates.publish(msg)
 
+        # Stop sim if outside bounding box
+        dist_goal = np.linalg.norm(xgoal.T - np.array([msg.linear.x, msg.linear.y]).T)
+        if self.isSim: 
+            if msg.linear.x > bounding_x[1] or msg.linear.x <bounding_x[0] or msg.linear.y > bounding_y[1] or msg.linear.y <bounding_y[0] or dist_goal < 0.2: 
+                self.running = False 
+                print("Out of Bounding Box")
+
         # Create or Update Marker and publish
-        pose = np.array([[msg.linear.x, msg.linear.y, msg.angular.z]]).T
+        pose = np.array([[msg.linear.x, msg.linear.y, msg.linear.z]]).T
         quadMarker = createMarker(4, pose, self.markerExists)
         self.pubVis.publish(quadMarker)
         if not self.markerExists: 

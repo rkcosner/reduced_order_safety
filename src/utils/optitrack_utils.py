@@ -32,30 +32,30 @@ class optitrack_vis_node():
 
     # Callbacks to update visualization markers
     def unitreeCallback(self, msg): 
-        q_z = msg.pose.pose.orientation.z
-        q_w = msg.pose.pose.orientation.w
-        pose = [msg.pose.position.x + realsense_offset, msg.pose.position.y + optitrack_adjust_y, np.arctan2(2*q_w*q_z)/(1-2*q_z**2)]
+        q_z = msg.pose.orientation.z
+        q_w = msg.pose.orientation.w
+        pose = [msg.pose.position.x, msg.pose.position.y + optitrack_adjust_y, np.arctan2(2*q_w*q_z, 1-2*q_z**2)]
         marker = createMarker(0,pose,self.unitreeExists)
         self.pubUnitree.publish(marker)
         if not self.unitreeExists:
             self.unitreeExists = True
 
     def tower1Callback(self, msg): 
-        pose = [msg.pose.position.x + realsense_offset, msg.pose.position.y + optitrack_adjust_y, 0]
+        pose = [msg.pose.position.x , msg.pose.position.y + optitrack_adjust_y, 0]
         marker = createMarker(1,pose, self.tower1Exists) 
         self.pubTower1.publish(marker)
         if not self.tower1Exists:
             self.tower1Exists = True
 
     def tower2Callback(self, msg): 
-        pose = [msg.pose.position.x + realsense_offset, msg.pose.position.y + optitrack_adjust_y, 0]
+        pose = [msg.pose.position.x , msg.pose.position.y + optitrack_adjust_y, 0]
         marker = createMarker(2,pose, self.tower2Exists)
         self.pubTower2.publish(marker)
         if not self.tower2Exists:
             self.towe2Exists = True
 
     def tower3Callback(self, msg): 
-        pose = [msg.pose.position.x + realsense_offset, msg.pose.position.y + optitrack_adjust_y, 0]
+        pose = [msg.pose.position.x, msg.pose.position.y + optitrack_adjust_y, 0]
         marker = createMarker(3,pose, self.tower3Exists)
         self.pubTower3.publish(marker)
         if not self.tower3Exists:

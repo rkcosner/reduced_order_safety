@@ -152,8 +152,8 @@ class safe_velocity_node():
 
         self.state[0,0] = data.linear.x
         self.state[1,0] = data.linear.y
-        self.state[2,0] = data.angular.z
-        self.x_traj.append([data.linear.x, data.linear.y, data.angular.z])
+        self.state[2,0] = data.linear.z
+        self.x_traj.append([data.linear.x, data.linear.y, data.linear.z])
 
     def t265Callback(self, msg): 
         ## Camera State Reader

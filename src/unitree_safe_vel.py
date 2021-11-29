@@ -37,7 +37,7 @@ if __name__ =="__main__":
         if experiment_type == 0: 
             #Mess with the barrier measurements here for the simulation
             step+=1
-            par['xO']= xOsim - 0.1*np.array([[0,0],[1,1]])#0.1*np.array([[np.cos(step/period*2*np.pi), np.sin(step/period*2*np.pi)],
+            par['xO']= xOsim + meas_err #- 0.1*np.array([[0,0],[1,1]])#0.1*np.array([[np.cos(step/period*2*np.pi), np.sin(step/period*2*np.pi)],
                                 #        [-np.sin(step/period*2*np.pi), np.cos(step/period*2*np.pi)]])#np.random.normal(loc=0, scale=0.1, size=xOsim.shape )
             if step == period:
                 step = 0 
@@ -53,6 +53,7 @@ if __name__ =="__main__":
     obs_traj = np.squeeze(np.array(node.obs_traj))
     h_meas_traj = np.array(node.h_meas_traj)
     h_true_traj = np.array(node.h_true_traj)
+
 
     today = datetime.now()
     filename_string = "/home/rkcosner/Documents/Research/RO_unitree/catkin_ws/src/reduced_order_safety_unitree/datalogs/" + today.strftime("%Y_%m_%d_%H_%M")

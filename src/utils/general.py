@@ -6,12 +6,33 @@ import numpy as np
 
 realsense_offset = 0.26 
 robot_radius = 0.32
-optitrack_adjust_y = -1 
+optitrack_adjust_y = 0
 
 # Node update rates
 optitrack_vis_freq = 10
-unitree_bridge_freq = 20 
-controller_freq = 20 
+unitree_bridge_freq = 20
+controller_freq = 20
+
+###########################################################
+# Problem Params
+xgoal = np.array([[4,-1.5]]).T
+dim = len(xgoal)
+xO =  np.empty((0,0)) #
+xOsim = np.array([[1.5,0],[3, -2]]).T #np.array([[ 2.18142767, -2.02558239],[ 2.83602033, -0.31468012]]).T##
+meas_err = -0.1*np.array([[0,0],[1,1]])#np.random.normal(0,0.1,(2,2))
+DO = 0.5 + robot_radius#np.empty((0))
+
+# Controller Params
+scale = 0.3
+Kp = 0.2*scale
+Kv = 0.08*scale
+delta = 0.25
+Kom = 0.4*scale
+R = 0.25
+
+
+visual_offset = 0.26 #m 
+
 
 
 # Create Visualization Markers
