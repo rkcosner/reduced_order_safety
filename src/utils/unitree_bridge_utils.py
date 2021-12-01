@@ -54,10 +54,15 @@ class unitree_bridge_node():
 
         # Publish unitree onboard states as Twist
         msg = Twist()
+        # Poses
         msg.linear.x = tlm_data[5][0] 
         msg.linear.y = tlm_data[5][1]
         msg.linear.z = tlm_data[5][5]
-        self.pubUnitreeStates.publish(msg)
+        # Velocities
+        msg.angular.x = tlm_data[6][0] 
+        msg.angular.y = tlm_data[6][1] 
+        msg.angular.z = tlm_data[6][5]
+
 
         # Stop sim if outside bounding box
         dist_goal = np.linalg.norm(xgoal.T - np.array([msg.linear.x, msg.linear.y]).T)
@@ -65,6 +70,10 @@ class unitree_bridge_node():
             if msg.linear.x > bounding_x[1] or msg.linear.x <bounding_x[0] or msg.linear.y > bounding_y[1] or msg.linear.y <bounding_y[0] or dist_goal < 0.2: 
                 self.running = False 
                 print("Out of Bounding Box")
+
+        if self.running: 
+            self.pubUnitreeStates.publish(msg)
+
 
         # Create or Update Marker and publish
         pose = np.array([[msg.linear.x, msg.linear.y, msg.linear.z]]).T

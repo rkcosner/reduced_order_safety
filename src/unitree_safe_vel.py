@@ -46,6 +46,7 @@ if __name__ =="__main__":
 
 
     # Save Data
+    print("Saving Data")
     x_traj = np.squeeze(np.array(node.x_traj))
     x_mocap_traj = np.squeeze(np.array(node.x_mocap_traj))
     u_traj = np.squeeze(np.array(node.u_traj))

@@ -1,10 +1,13 @@
 import numpy as np 
 import matplotlib.pyplot as plt 
+import matplotlib as mpl
 from os import listdir
+from get_tracking_error import * 
 
 from numpy.core.fromnumeric import squeeze
 
-
+mpl.rc('font', family='serif') 
+mpl.rcParams.update({'font.size': 12})
 plt.rcParams["figure.figsize"] = (3.5,2.5)
 
 DO = 0.5 + 0.32
@@ -77,6 +80,37 @@ ax = plt.gca()
 ax.set_aspect('equal')
 # plt.legend(['state', 'obs1', 'obs2'])
 plt.title(title)
+
+
+plt.figure()
+ax1 = plt.subplot(211)
+ax2 = plt.subplot(212)
+# ax3 = plt.subplot(313)
+v_true = []
+vy_true = []
+for x in x_traj:
+    v = np.cos(x[2])*x[3] + np.sin(x[2])*x[4]
+    vy = -np.sin(x[2])*x[3] + np.cos(x[2])*x[4]
+    v_true.append(v)
+    vy_true.append(vy)
+ax1.plot(x_traj[:,6], v_true, 'g')
+ax2.plot(x_traj[:,6], x_traj[:,5], 'g')
+ax1.plot(u_des_traj[:,2], u_des_traj[:,0], 'b')
+ax2.plot(u_des_traj[:,2], u_des_traj[:,1], 'b')
+# ax3.plot(x_traj[:,6], vy_true,'g')
+# ax3.plot(x_traj[:,6], np.array(vy_true)*0, 'b')
+# ax1.set_title(title)
+ax1.set_ylabel('$\mathbf{v}$')
+# ax3.set_ylabel('lateral')
+ax2.set_ylabel('$\omega$')
+ax2.set_xlabel('time')
+ax1.legend(['true', 'commanded'])
+max_vx, max_vy, max_vw = get_tracking_error(x_traj[:,6], v_true, vy_true, x_traj[:,5], u_des_traj)
+
+print("max vx", max_vx)
+print("max vy", max_vy)
+print("max vw", max_vw)
+print("max v_norm", np.linalg.norm(np.array([max_vx, max_vy, max_vw])))
 
 plt.figure()
 plt.plot(u_traj[:,2], u_traj[:,0:2], 'r--')

@@ -124,7 +124,8 @@ def K_des(z):
     Kom = par['Kom']
     x = z[0:dim,:]
     psi = z[dim,:][0]
-    udes = np.array([[Kv*np.linalg.norm(x-xgoal), 
+    #Changed to drive forward more
+    udes = np.array([[Kv*np.linalg.norm(x-xgoal)+0.05, 
                     -Kom*(np.sin(psi) - (xgoal[1][0]-x[1][0])/np.linalg.norm(x-xgoal) )]]).T
 
     udes = saturate(udes)
@@ -182,6 +183,7 @@ class safe_velocity_node():
 
         # record values 
         self.t0 = getTimeNow()
+        self.t = getTimeNow()
         self.u_traj = []
         self.x_traj = []
         self.x_mocap_traj = []
@@ -214,7 +216,7 @@ class safe_velocity_node():
         self.state[2,0] = data.linear.z
         
         # data logging
-        self.x_traj.append([data.linear.x, data.linear.y, data.linear.z,  self.getCurrentTime()])
+        self.x_traj.append([data.linear.x, data.linear.y, data.linear.z, data.angular.x, data.angular.y, data.angular.z, self.getCurrentTime()])
         
 
         self.obs_traj.append(par['xO'])
@@ -230,11 +232,23 @@ class safe_velocity_node():
         q_w = data.pose.pose.orientation.w
         yaw = np.arctan2(2*q_w*q_z, 1-2*q_z**2)
 
-        self.state[0,0] = data.pose.pose.position.x - realsense_offset*np.cos(yaw) 
-        self.state[1,0] = data.pose.pose.position.y - realsense_offset*np.sin(yaw) 
-        self.state[2,0] = yaw
+        t_old = self.t
 
-        self.x_traj.append([self.state[0,0], self.state[1,0], self.state[2,0], self.getCurrentTime()])
+        x_now = data.pose.pose.position.x - realsense_offset*np.cos(yaw) 
+        y_now = data.pose.pose.position.y - realsense_offset*np.sin(yaw)
+        w_now = yaw
+        self.t = self.getCurrentTime()
+
+        dt = self.t - t_old
+        vx = (x_now - self.state[0,0])/dt
+        vy = (y_now - self.state[1,0])/dt
+        vw = (w_now - self.state[2,0])/dt 
+
+        self.state[0,0] = x_now 
+        self.state[1,0] = y_now 
+        self.state[2,0] = w_now
+
+        self.x_traj.append([self.state[0,0], self.state[1,0], self.state[2,0], vx, vy, vw, self.getCurrentTime()])
 
 
     def barrierIDsCallback(self, data):
@@ -293,7 +307,8 @@ class safe_velocity_node():
 
         if self.experiment_type == 0: 
             # Add drift experimental
-            self.cmdVel.linear.x = u_np[0,0]+0.05
+            cmd_err = 0#0.05
+            self.cmdVel.linear.x = u_np[0,0]+cmd_err
         else:        
             self.cmdVel.linear.x = u_np[0,0]
 
