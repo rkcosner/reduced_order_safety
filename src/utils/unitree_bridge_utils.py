@@ -48,7 +48,7 @@ class unitree_bridge_node():
         # Catch Error if there's no tlm yet because the unitree hasn't started
         tlm_data = get_tlm_data()
         if tlm_data == None: 
-            rospy.logerr("No tlm received from unitree")
+            # rospy.logerr("No tlm received from unitree")
             rospy.sleep(0.5)
             return 
 
