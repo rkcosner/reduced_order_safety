@@ -89,5 +89,6 @@ class unitree_bridge_node():
         des_wz = data.angular.z
         if self.running:
             walk_mpc_idqp(vx = des_vx, vrz = des_wz)
-        else: 
+        else:
+            # stand_idqp() 
             lie()

@@ -27,7 +27,7 @@ scale = 0.3
 Kp = 0.2*scale
 Kv = 0.08*scale
 delta = 0.25
-Kom = 0.4*scale
+Kom = 0.6*scale
 R = 0.25
 
 
