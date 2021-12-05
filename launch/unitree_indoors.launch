@@ -30,6 +30,6 @@
   <node name="record" pkg="rosbag" type="record" args="record -o $(find red_ord_unitree)/bags/indoor
         /cmd  /unitree_pose /occupancy /barrier_IDs /simStates /t265/odom/sample
         /unitree_vis_marker /tower1_vis_marker /tower2_vis_marker /tower3_vis_marker  
-        /d400/aligned_depth_to_color/image_rect_raw  /d400/depth/image_rect_raw  "/>
+        /d400/color/image_raw  /d400/depth/image_rect_raw  "/>
 
 </launch>

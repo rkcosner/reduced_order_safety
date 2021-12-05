@@ -28,6 +28,6 @@
   <!--Record to ./bag/ -->
   <node name="record" pkg="rosbag" type="record" args="record -o $(find red_ord_unitree)/bags/outdoor
         /cmd  /unitree_pose /occupancy /barrier_IDs /simStates /t265/odom/sample
-        /d400/aligned_depth_to_color/image_rect_raw  /d400/depth/image_rect_raw  "/>
+        /d400/color/image_raw  /d400/depth/image_rect_raw  "/>
 
 </launch>
