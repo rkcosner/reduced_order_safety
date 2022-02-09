@@ -157,33 +157,10 @@ class safe_velocity_node():
 
         self.pub = rospy.Publisher('cmd', Twist, queue_size=1)
 
-        if experiment_type == 0: #Sim 
-            # Use default barrier positions (in unitree_safe_vel_utils) and use true sim position
-            par["xO"] = xOsim
-            rospy.Subscriber('unitreeOnboardStates', Twist, self.stateCallback)
-        elif experiment_type == 1: # In lab  
-            # Use measured barrier positions and SLAM. Also, record ground truth  
-            rospy.Subscriber("/vrpn_client_node/Unitree/pose", PoseStamped, self.unitreeMocapCallback)
-            rospy.Subscriber("/vrpn_client_node/Tower1/pose", PoseStamped, self.tower1Callback)
-            rospy.Subscriber("/vrpn_client_node/Tower2/pose", PoseStamped, self.tower2Callback)
-            rospy.Subscriber("/vrpn_client_node/Tower3/pose", PoseStamped, self.tower3Callback)
-            rospy.Subscriber('barrier_IDs', MarkerArray, self.barrierIDsCallback)
-            rospy.Subscriber('t265/odom/sample', Odometry, self.slamCallback) 
-            self.state_mocap = np.array([[0,0,0]]).T
-        elif experiment_type == 2: # Outside
-            # Use measured barrier positions and SLAM.
-            rospy.Subscriber('barrier_IDs', MarkerArray, self.barrierIDsCallback)
-            rospy.Subscriber('t265/odom/sample', Odometry, self.slamCallback) 
-
-        self.experiment_type = experiment_type
-        
-
-        self.state = np.array([[0.,0.,0.]]).T
-        self.cmdVel = Twist()
-
         # record values 
         self.t0 = getTimeNow()
         self.t = getTimeNow()
+        self.xO = np.array([[10.0,10.0], [10.0,10.0]])
         self.u_traj = []
         self.x_traj = []
         self.x_mocap_traj = []
@@ -195,7 +172,7 @@ class safe_velocity_node():
         self.tower1_mocap_pose = np.empty((0,0))
         self.tower2_mocap_pose = np.empty((0,0))        
         self.tower3_mocap_pose = np.empty((0,0))     
-        if self.experiment_type == 0:
+        if experiment_type == 0:
             self.tower1_mocap_pose = [xOsim[0][0],xOsim[1][0] ]
             self.tower2_mocap_pose = [xOsim[0][1],xOsim[1][1] ]
         
@@ -204,87 +181,114 @@ class safe_velocity_node():
         self.MRCBF_add = C
         self.MRCBF_mult = D
 
+        if experiment_type == 0: #Sim 
+            # Use default barrier positions (in unitree_safe_vel_utils) and use true sim position
+            par["xO"] = xOsim
+            rospy.Subscriber('unitreeOnboardStates', Twist, self.stateCallback)
+        elif experiment_type == 1: # In lab  
+            # Use measured barrier positions and SLAM. Also, record ground truth  
+            rospy.Subscriber("/vrpn_client_node/Unitree/pose", PoseStamped, self.unitreeMocapCallback)
+            rospy.Subscriber("/vrpn_client_node/duckie1/pose", PoseStamped, self.tower1Callback)
+            rospy.Subscriber("/vrpn_client_node/duckie2/pose", PoseStamped, self.tower2Callback)
+            self.state_mocap = np.array([[0,0,0]]).T
+
+        self.experiment_type = experiment_type
+        
+
+        self.state = np.array([[0.,0.,0.]]).T
+        self.cmdVel = Twist()
+
+
+
     def getCurrentTime(self):
         return getTimeNow() - self.t0 
 
-    def stateCallback(self, data): 
-        if self.flag_state_received == False: 
-            self.flag_state_received = True
+    # def stateCallback(self, data): 
+    #     if self.flag_state_received == False: 
+    #         self.flag_state_received = True
 
-        self.state[0,0] = data.linear.x
-        self.state[1,0] = data.linear.y
-        self.state[2,0] = data.linear.z
+    #     self.state[0,0] = data.linear.x
+    #     self.state[1,0] = data.linear.y
+    #     self.state[2,0] = data.linear.z
         
-        # data logging
-        self.x_traj.append([data.linear.x, data.linear.y, data.linear.z, data.angular.x, data.angular.y, data.angular.z, self.getCurrentTime()])
-        
-
-        self.obs_traj.append(par['xO'])
-        self.obs_time.append(self.getCurrentTime())
-
-
-    def slamCallback(self, data): 
-        if self.flag_state_received == False: 
-            self.flag_state_received = True
+    #     # data logging
+    #     self.x_traj.append([data.linear.x, data.linear.y, data.linear.z, data.angular.x, data.angular.y, data.angular.z, self.getCurrentTime()])
         
 
-        q_z = data.pose.pose.orientation.z
-        q_w = data.pose.pose.orientation.w
-        yaw = np.arctan2(2*q_w*q_z, 1-2*q_z**2)
-
-        t_old = self.t
-
-        x_now = data.pose.pose.position.x - realsense_offset*np.cos(yaw) 
-        y_now = data.pose.pose.position.y - realsense_offset*np.sin(yaw)
-        w_now = yaw
-        self.t = self.getCurrentTime()
-
-        dt = self.t - t_old
-        vx = (x_now - self.state[0,0])/dt
-        vy = (y_now - self.state[1,0])/dt
-        vw = (w_now - self.state[2,0])/dt 
-
-        self.state[0,0] = x_now 
-        self.state[1,0] = y_now 
-        self.state[2,0] = w_now
-
-        self.x_traj.append([self.state[0,0], self.state[1,0], self.state[2,0], vx, vy, vw, self.getCurrentTime()])
+    #     self.obs_traj.append(par['xO'])
+    #     self.obs_time.append(self.getCurrentTime())
 
 
-    def barrierIDsCallback(self, data):
-        ## Receive and Update Barrier Positions
-        # - reads barrier_IDs message 
-        # - resets xO to the measured positions
-        # - sets Dob to be the appropriate length 
-        # - records obstacle locations
+    # def slamCallback(self, data): 
+    #     if self.flag_state_received == False: 
+    #         self.flag_state_received = True
+        
 
-        print("new barriers")
-        xO = []
-        for marker in data.markers: 
-            pose = [marker.pose.position.x, marker.pose.position.y]
-            xO.append(pose)
-            self.obs_traj.append(pose)
-        xO = np.array(xO).T
-        if len(xO) == 0: 
-            xO = np.empty((0,0))
-        par["xO"] = xO
-        par["DO"] = (0.5+robot_radius)
-        print(xO)
+    #     q_z = data.pose.pose.orientation.z
+    #     q_w = data.pose.pose.orientation.w
+    #     yaw = np.arctan2(2*q_w*q_z, 1-2*q_z**2)
+
+    #     t_old = self.t
+
+    #     x_now = data.pose.pose.position.x - realsense_offset*np.cos(yaw) 
+    #     y_now = data.pose.pose.position.y - realsense_offset*np.sin(yaw)
+    #     w_now = yaw
+    #     self.t = self.getCurrentTime()
+
+    #     dt = self.t - t_old
+    #     vx = (x_now - self.state[0,0])/dt
+    #     vy = (y_now - self.state[1,0])/dt
+    #     vw = (w_now - self.state[2,0])/dt 
+
+    #     self.state[0,0] = x_now 
+    #     self.state[1,0] = y_now 
+    #     self.state[2,0] = w_now
+
+    #     self.x_traj.append([self.state[0,0], self.state[1,0], self.state[2,0], vx, vy, vw, self.getCurrentTime()])
+
+
+    # def barrierIDsCallback(self, data):
+    #     ## Receive and Update Barrier Positions
+    #     # - reads barrier_IDs message 
+    #     # - resets xO to the measured positions
+    #     # - sets Dob to be the appropriate length 
+    #     # - records obstacle locations
+
+    #     print("new barriers")
+    #     xO = []
+    #     for marker in data.markers: 
+    #         pose = [marker.pose.position.x, marker.pose.position.y]
+    #         xO.append(pose)
+    #         self.obs_traj.append(pose)
+    #     xO = np.array(xO).T
+    #     if len(xO) == 0: 
+    #         xO = np.empty((0,0))
+    #     par["xO"] = xO
+    #     par["DO"] = (0.5+robot_radius)
+    #     print(xO)
 
     def tower1Callback(self, data):
-        if len(self.tower1_mocap_pose) == 0: 
-            self.tower1_mocap_pose = [data.pose.position.x, data.pose.position.y+optitrack_adjust_y]
+        self.xO[0,0] = data.pose.position.x
+        self.xO[1,0] = data.pose.position.y
+        par["xO"] = self.xO
+
     def tower2Callback(self, data):
-        if len(self.tower2_mocap_pose) == 0: 
-            self.tower2_mocap_pose = [data.pose.position.x, data.pose.position.y+optitrack_adjust_y]
+        self.xO[0,1] = data.pose.position.x
+        self.xO[1,1] = data.pose.position.y
+        par["xO"] = self.xO
+
     def tower3Callback(self, data):
         if len(self.tower3_mocap_pose) == 0: 
             self.tower3_mocap_pose = [data.pose.position.x, data.pose.position.y+optitrack_adjust_y]
+    
     def unitreeMocapCallback(self, data): 
+        if self.flag_state_received == False: 
+            self.flag_state_received = True
+        
         q_z = data.pose.orientation.z
         q_w = data.pose.orientation.w
         yaw = np.arctan2(2*q_w*q_z, 1-2*q_z**2)
-        self.state_mocap = np.array([[data.pose.position.x, data.pose.position.y+optitrack_adjust_y, yaw]]).T
+        self.state = np.array([[data.pose.position.x, data.pose.position.y+optitrack_adjust_y, yaw]]).T
         self.x_mocap_traj.append([data.pose.position.x, data.pose.position.y+optitrack_adjust_y, yaw, self.getCurrentTime()])
 
 
@@ -298,7 +302,6 @@ class safe_velocity_node():
 
         # Filter through CBF SOCP
         barrier_bits = self.getBarrierBits()
-
         u_np = K_CBF_SOCP(barrier_bits,u_des, self.alpha, self.sigma, self.MRCBF_add, self.MRCBF_mult)
 
         # Publish v_cmd
@@ -325,20 +328,20 @@ class safe_velocity_node():
         h = measureCBFutil(z, par["xO"])
         self.h_meas_traj.append([h, self.getCurrentTime()])
 
-        if self.experiment_type == 1 or self.experiment_type == 0 : 
-            # If in lab with mocap record ground truth
-            towers = [self.tower1_mocap_pose, self.tower2_mocap_pose, self.tower3_mocap_pose]
-            xO_true = []
-            for t in towers: 
-                if len(t) > 0: 
-                    xO_true.append(t)
-            xO_true = np.asarray(xO_true).T
-        if self.experiment_type == 1: 
-            z = self.state_mocap
-            self.h_true_traj.append([measureCBFutil(z, xO_true), self.getCurrentTime()])
-        elif self.experiment_type == 0: 
-            z = self.state
-            self.h_true_traj.append([measureCBFutil(z, xO_true), self.getCurrentTime()])
+        # if self.experiment_type == 1 or self.experiment_type == 0 : 
+        #     # If in lab with mocap record ground truth
+        #     towers = [self.tower1_mocap_pose, self.tower2_mocap_pose, self.tower3_mocap_pose]
+        #     xO_true = []
+        #     for t in towers: 
+        #         if len(t) > 0: 
+        #             xO_true.append(t)
+        #     xO_true = np.asarray(xO_true).T
+        # if self.experiment_type == 1: 
+        #     z = self.state_mocap
+        #     self.h_true_traj.append([measureCBFutil(z, xO_true), self.getCurrentTime()])
+        # elif self.experiment_type == 0: 
+        #     z = self.state
+        #     self.h_true_traj.append([measureCBFutil(z, xO_true), self.getCurrentTime()])
 
     def getBarrierBits(self):
         z = self.state
@@ -346,6 +349,7 @@ class safe_velocity_node():
         xO = par['xO']
         DO = par['DO']
         delta = par['delta']
+
 
         x = z[0:dim,:]
         psi = z[dim,:][0]

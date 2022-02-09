@@ -15,12 +15,12 @@ controller_freq = 20
 
 ###########################################################
 # Problem Params
-xgoal = np.array([[4,-1.5]]).T
+xgoal = np.array([[3.5,-2.5]]).T
 dim = len(xgoal)
 xO =  np.empty((0,0)) #
 xOsim = np.array([[1.5,0],[3, -2]]).T #np.array([[ 2.18142767, -2.02558239],[ 2.83602033, -0.31468012]]).T##
 meas_err = -0.1*np.array([[0,0],[1,1]])#np.random.normal(0,0.1,(2,2))
-DO = 0.5 + robot_radius#np.empty((0))
+DO = 0.3 + robot_radius#np.empty((0))
 
 # Controller Params
 scale = 0.3
@@ -62,9 +62,9 @@ def createMarker(id, pose, exists):
     # Obstacle Optitrack
     elif id < 4: 
         marker.type = marker.CYLINDER
-        marker.scale.x = 1
-        marker.scale.y = 1
-        marker.scale.z = 1
+        marker.scale.x = DO
+        marker.scale.y = DO
+        marker.scale.z = DO
         marker.color.r = 1 
         marker.color.g = 0.25
     # Unitree Onboard

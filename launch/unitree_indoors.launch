@@ -14,7 +14,7 @@
   <node name="optitrack_viz" pkg="red_ord_unitree" type="optitrack_vis_node.py"/>
 
   <!--Generate Barriers-->
-  <node name="barrier_generator" pkg="occupancy" type="generate_barriers_node.py"/>
+  <!-- <node name="barrier_generator" pkg="occupancy" type="generate_barriers_node.py"/> -->
   
   <!--Safe Controller-->
   <node pkg="red_ord_unitree" type="unitree_safe_vel.py" name="safe_velocity_node" output="screen">
@@ -26,12 +26,10 @@
   </node>
 
   <!--Unitree-ROS Bridge-->
-  <node pkg="red_ord_unitree" type="unitree_bridge.py"     name="unitree_bridge_node" output="screen"/>
+  <node pkg="red_ord_unitree" type="unitree_bridge.py"  name="unitree_bridge_node" output="screen"/>
 
   <!--Record to ./bag/ -->
   <node name="record" pkg="rosbag" type="record" args="record -o $(find red_ord_unitree)/bags/indoor
-        /cmd  /unitree_pose /occupancy /barrier_IDs /simStates /t265/odom/sample
-        /unitree_vis_marker /tower1_vis_marker /tower2_vis_marker /tower3_vis_marker  
-        /d400/color/image_raw  /d400/depth/image_rect_raw  "/>
+        /cmd  /unitree_pose /unitree_vis_marker /duckie1_vis_marker /duckie2_vis_marker "/>
 
 </launch>
