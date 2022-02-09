@@ -33,6 +33,7 @@ R = 0.25
 
 visual_offset = 0.26 #m 
 
+PERCEPTION = False
 
 
 # Create Visualization Markers
@@ -42,7 +43,10 @@ def createMarker(id, pose, exists):
     # The received positions are in the world frame, 
     # so we have to shift them forward by the realsense 
     # offset to get them in the realsense reference frame
-    marker.header.frame_id = "t265_odom_frame"
+    if PERCEPTION: 
+        marker.header.frame_id = "t265_odom_frame"
+    else: 
+        marker.header.frame_id = "world"
     marker.pose.position.x = pose[0]
     marker.pose.position.y = pose[1]
     marker.pose.position.z = 0

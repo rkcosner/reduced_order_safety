@@ -15,13 +15,13 @@ class optitrack_vis_node():
         # Set up Publishers and subscribers
         self.rate = rospy.Rate(optitrack_vis_freq) 
         rospy.Subscriber("/vrpn_client_node/Unitree/pose", PoseStamped, self.unitreeCallback)
-        rospy.Subscriber("/vrpn_client_node/Tower1/pose", PoseStamped, self.tower1Callback)
-        rospy.Subscriber("/vrpn_client_node/Tower2/pose", PoseStamped, self.tower2Callback)
+        rospy.Subscriber("/vrpn_client_node/duckie1/pose", PoseStamped, self.tower1Callback)
+        rospy.Subscriber("/vrpn_client_node/duckie2/pose", PoseStamped, self.tower2Callback)
         rospy.Subscriber("/vrpn_client_node/Tower3/pose", PoseStamped, self.tower3Callback)
         
         self.pubUnitree = rospy.Publisher('/unitree_vis_marker',Marker, queue_size=1)
-        self.pubTower1 = rospy.Publisher('/tower1_vis_marker',Marker, queue_size=1)
-        self.pubTower2 = rospy.Publisher('/tower2_vis_marker',Marker, queue_size=1)
+        self.pubTower1 = rospy.Publisher('/duckie1_vis_marker',Marker, queue_size=1)
+        self.pubTower2 = rospy.Publisher('/duckie2_vis_marker',Marker, queue_size=1)
         self.pubTower3 = rospy.Publisher('/tower3_vis_marker',Marker, queue_size=1)
 
         # Modify or Create Marker

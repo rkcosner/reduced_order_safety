@@ -7,8 +7,10 @@
   <arg name="C" default="0"/>
   <arg name="D" default="0"/>
 
+  <include file="$(find red_ord_unitree)/launch/optitrack.launch"/>
+
   <!--Visulation-->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find occupancy)/rviz/barrier_gen.rviz"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find red_ord_unitree)/rviz/prithvi_RAL.rviz"/>
   <node name="optitrack_viz" pkg="red_ord_unitree" type="optitrack_vis_node.py"/>
 
   <!--Generate Barriers-->
