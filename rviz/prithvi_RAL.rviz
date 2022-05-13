@@ -61,7 +61,15 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: true
+        Unitree:
+          Value: true
         duckie1:
+          Value: true
+        duckie2:
+          Value: true
+        duckie3:
+          Value: true
+        duckie4:
           Value: true
         world:
           Value: true
@@ -73,7 +81,15 @@ Visualization Manager:
       Show Names: true
       Tree:
         world:
+          Unitree:
+            {}
           duckie1:
+            {}
+          duckie2:
+            {}
+          duckie3:
+            {}
+          duckie4:
             {}
       Update Interval: 0
       Value: true
@@ -98,7 +114,7 @@ Visualization Manager:
       Marker Topic: /duckie2_vis_marker
       Name: Marker
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker
@@ -106,7 +122,23 @@ Visualization Manager:
       Marker Topic: /unitree_vis_marker
       Name: Marker
       Namespaces:
-        {}
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /duckie3_vis_marker
+      Name: Marker
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /duckie4_vis_marker
+      Name: Marker
+      Namespaces:
+        "": true
       Queue Size: 100
       Value: true
   Enabled: true

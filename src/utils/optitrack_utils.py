@@ -17,18 +17,22 @@ class optitrack_vis_node():
         rospy.Subscriber("/vrpn_client_node/Unitree/pose", PoseStamped, self.unitreeCallback)
         rospy.Subscriber("/vrpn_client_node/duckie1/pose", PoseStamped, self.tower1Callback)
         rospy.Subscriber("/vrpn_client_node/duckie2/pose", PoseStamped, self.tower2Callback)
+        rospy.Subscriber("/vrpn_client_node/duckie3/pose", PoseStamped, self.tower3Callback)
+        rospy.Subscriber("/vrpn_client_node/duckie4/pose", PoseStamped, self.tower4Callback)
         rospy.Subscriber("/vrpn_client_node/Tower3/pose", PoseStamped, self.tower3Callback)
         
         self.pubUnitree = rospy.Publisher('/unitree_vis_marker',Marker, queue_size=1)
         self.pubTower1 = rospy.Publisher('/duckie1_vis_marker',Marker, queue_size=1)
         self.pubTower2 = rospy.Publisher('/duckie2_vis_marker',Marker, queue_size=1)
-        self.pubTower3 = rospy.Publisher('/tower3_vis_marker',Marker, queue_size=1)
+        self.pubTower3 = rospy.Publisher('/duckie3_vis_marker',Marker, queue_size=1)
+        self.pubTower4 = rospy.Publisher('/duckie4_vis_marker',Marker, queue_size=1)
 
         # Modify or Create Marker
         self.unitreeExists = False
         self.tower1Exists = False
         self.tower2Exists = False
         self.tower3Exists = False
+        self.tower4Exists = False
 
     # Callbacks to update visualization markers
     def unitreeCallback(self, msg): 
@@ -53,6 +57,20 @@ class optitrack_vis_node():
         self.pubTower2.publish(marker)
         if not self.tower2Exists:
             self.towe2Exists = True
+
+    def tower3Callback(self, msg): 
+        pose = [msg.pose.position.x , msg.pose.position.y + optitrack_adjust_y, 0]
+        marker = createMarker(3,pose, self.tower3Exists)
+        self.pubTower3.publish(marker)
+        if not self.tower3Exists:
+            self.tower3Exists = True
+
+    def tower4Callback(self, msg): 
+        pose = [msg.pose.position.x , msg.pose.position.y + optitrack_adjust_y, 0]
+        marker = createMarker(4,pose, self.tower4Exists)
+        self.pubTower4.publish(marker)
+        if not self.tower4Exists:
+            self.tower4Exists = True
 
     def tower3Callback(self, msg): 
         pose = [msg.pose.position.x, msg.pose.position.y + optitrack_adjust_y, 0]

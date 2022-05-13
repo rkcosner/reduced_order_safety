@@ -20,14 +20,14 @@ dim = len(xgoal)
 xO =  np.empty((0,0)) #
 xOsim = np.array([[1.5,0],[3, -2]]).T #np.array([[ 2.18142767, -2.02558239],[ 2.83602033, -0.31468012]]).T##
 meas_err = -0.1*np.array([[0,0],[1,1]])#np.random.normal(0,0.1,(2,2))
-DO = 0.3 + robot_radius#np.empty((0))
+DO = 0.1 + robot_radius#np.empty((0))
 
 # Controller Params
-scale = 0.3
+scale = 0.25#0.3
 Kp = 0.2*scale
 Kv = 0.08*scale
 delta = 0.25
-Kom = 0.6*scale
+Kom = 0.6*scale#0.6*scale
 R = 0.25
 
 
@@ -60,7 +60,7 @@ def createMarker(id, pose, exists):
         marker.color.r = 0.5
         marker.color.g = 0
     # Obstacle Optitrack
-    elif id < 4: 
+    elif id < 5: 
         marker.type = marker.CYLINDER
         marker.scale.x = DO
         marker.scale.y = DO

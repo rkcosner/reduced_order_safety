@@ -160,7 +160,7 @@ class safe_velocity_node():
         # record values 
         self.t0 = getTimeNow()
         self.t = getTimeNow()
-        self.xO = np.array([[10.0,10.0], [10.0,10.0]])
+        self.xO = np.array([[10.0,10.0,10.0,10.0], [10.0,10.0,10.0,10.0]])
         self.u_traj = []
         self.x_traj = []
         self.x_mocap_traj = []
@@ -190,6 +190,9 @@ class safe_velocity_node():
             rospy.Subscriber("/vrpn_client_node/Unitree/pose", PoseStamped, self.unitreeMocapCallback)
             rospy.Subscriber("/vrpn_client_node/duckie1/pose", PoseStamped, self.tower1Callback)
             rospy.Subscriber("/vrpn_client_node/duckie2/pose", PoseStamped, self.tower2Callback)
+            rospy.Subscriber("/vrpn_client_node/duckie3/pose", PoseStamped, self.tower3Callback)
+            rospy.Subscriber("/vrpn_client_node/duckie4/pose", PoseStamped, self.tower4Callback)
+
             self.state_mocap = np.array([[0,0,0]]).T
 
         self.experiment_type = experiment_type
@@ -278,9 +281,16 @@ class safe_velocity_node():
         par["xO"] = self.xO
 
     def tower3Callback(self, data):
-        if len(self.tower3_mocap_pose) == 0: 
-            self.tower3_mocap_pose = [data.pose.position.x, data.pose.position.y+optitrack_adjust_y]
-    
+        self.xO[0,2] = data.pose.position.x
+        self.xO[1,2] = data.pose.position.y
+        par["xO"] = self.xO
+
+    def tower4Callback(self, data):
+        self.xO[0,3] = data.pose.position.x
+        self.xO[1,3] = data.pose.position.y
+        par["xO"] = self.xO
+
+
     def unitreeMocapCallback(self, data): 
         if self.flag_state_received == False: 
             self.flag_state_received = True
