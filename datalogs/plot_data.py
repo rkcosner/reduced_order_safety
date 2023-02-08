@@ -13,14 +13,14 @@ plt.rcParams["figure.figsize"] = (3.5,2.5)
 DO = 0.5 + 0.32
 realsense_offset = 0.26
 
-data_files = listdir('/home/rkcosner/Documents/Research/RO_unitree/catkin_ws/src/reduced_order_safety_unitree/datalogs/') 
+data_files = listdir('/home/rkcosner/Documents/Research/RO_unitee/catkin_ws/src/reduced_order_safety_unitree/datalogs') 
 data_files.sort(reverse=True)
 for title in data_files: 
     if title[0] =='2': 
         break 
 
 date = title[0:17]
-full_path = "/home/rkcosner/Documents/Research/RO_unitree/catkin_ws/src/reduced_order_safety_unitree/datalogs/"
+full_path = "/home/rkcosner/Documents/Research/RO_unitee/catkin_ws/src/reduced_order_safety_unitree/datalogs/"
 print("showing data from ", date)
 learning_params = np.load(full_path+date+"learning_params.npy")
 x_traj = np.load(full_path+date+"x_traj.npy")
@@ -59,6 +59,7 @@ circ_y = DO*np.sin(theta)
 ##### FIGURE 1 
 plt.figure()
 # Plot the state trajectory
+breakpoint()
 plt.plot(x_traj[:,0],x_traj[:,1], 'b')
 # Plot the measured obstacles
 if len(obs_traj)>0:
